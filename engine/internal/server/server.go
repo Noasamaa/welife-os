@@ -8,7 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/welife-os/welife-os/engine/internal/importer"
 	"github.com/welife-os/welife-os/engine/internal/llm"
+	"github.com/welife-os/welife-os/engine/internal/parser"
 	"github.com/welife-os/welife-os/engine/internal/storage"
 	"github.com/welife-os/welife-os/engine/internal/task"
 )
@@ -33,6 +35,7 @@ type Server struct {
 	store       *storage.Store
 	llmClient   *llm.Client
 	taskManager *task.Manager
+	importer    *importer.Service
 	router      http.Handler
 	httpServer  *http.Server
 	shutdown    sync.Once
@@ -64,6 +67,15 @@ func New(cfg Config) (*Server, error) {
 		llmClient:   llmClient,
 		taskManager: task.NewManager(2),
 	}
+
+	// Initialize parser registry with all built-in parsers
+	registry := parser.NewRegistry()
+	registry.Register(parser.NewWeChatCSVParser())
+	registry.Register(parser.NewTelegramParser())
+	registry.Register(parser.NewWhatsAppParser())
+	registry.Register(parser.NewGenericCSVParser())
+
+	server.importer = importer.NewService(registry, store, server.taskManager)
 	server.router = server.routes()
 	server.httpServer = &http.Server{
 		Addr:              cfg.Addr(),

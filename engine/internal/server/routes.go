@@ -40,6 +40,17 @@ func (s *Server) routes() http.Handler {
 	router := chi.NewRouter()
 	router.Get("/health", s.handleHealth)
 	router.Get("/api/v1/system/status", s.handleSystemStatus)
+
+	// Import endpoints
+	router.Post("/api/v1/import", s.handleImportUpload)
+	router.Get("/api/v1/import/jobs", s.handleListImportJobs)
+	router.Get("/api/v1/import/jobs/{id}", s.handleGetImportJob)
+
+	// Conversation endpoints
+	router.Get("/api/v1/conversations", s.handleListConversations)
+	router.Get("/api/v1/conversations/{id}", s.handleGetConversation)
+	router.Get("/api/v1/conversations/{id}/messages", s.handleGetMessages)
+
 	return router
 }
 

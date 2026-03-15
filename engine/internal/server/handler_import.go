@@ -1,0 +1,142 @@
+package server
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/welife-os/welife-os/engine/internal/importer"
+	"github.com/welife-os/welife-os/engine/internal/parser"
+)
+
+func (s *Server) handleImportUpload(w http.ResponseWriter, r *http.Request) {
+	// Limit upload to 100MB
+	r.Body = http.MaxBytesReader(w, r.Body, 100<<20)
+
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid multipart form or file too large"})
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing 'file' field"})
+		return
+	}
+	defer file.Close()
+
+	// Read into memory for ReadSeeker
+	data, err := io.ReadAll(file)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "reading file"})
+		return
+	}
+
+	formatStr := r.FormValue("format")
+	selfName := r.FormValue("self_name")
+
+	var format parser.Format
+	if formatStr != "" && formatStr != "auto" {
+		format = parser.Format(formatStr)
+	}
+
+	opts := parser.Options{
+		SelfName: selfName,
+	}
+
+	req := importer.ImportRequest{
+		FileName: header.Filename,
+		Format:   format,
+		Data:     bytes.NewReader(data),
+		Options:  opts,
+	}
+
+	result, err := s.importer.Import(r.Context(), req)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, result)
+}
+
+func (s *Server) handleListImportJobs(w http.ResponseWriter, r *http.Request) {
+	jobs, err := s.store.ListImportJobs(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, jobs)
+}
+
+func (s *Server) handleGetImportJob(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	job, err := s.store.GetImportJob(r.Context(), id)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if strings.Contains(err.Error(), "not found") {
+			status = http.StatusNotFound
+		}
+		writeJSON(w, status, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, job)
+}
+
+func (s *Server) handleListConversations(w http.ResponseWriter, r *http.Request) {
+	convs, err := s.store.ListConversations(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, convs)
+}
+
+func (s *Server) handleGetConversation(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	conv, err := s.store.GetConversation(r.Context(), id)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if strings.Contains(err.Error(), "not found") {
+			status = http.StatusNotFound
+		}
+		writeJSON(w, status, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, conv)
+}
+
+func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request) {
+	convID := chi.URLParam(r, "id")
+	limit := queryInt(r, "limit", 50)
+	offset := queryInt(r, "offset", 0)
+
+	msgs, err := s.store.GetMessages(r.Context(), convID, limit, offset)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	total, _ := s.store.MessageCount(r.Context(), convID)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"messages": msgs,
+		"total":    total,
+		"limit":    limit,
+		"offset":   offset,
+	})
+}
+
+func queryInt(r *http.Request, key string, fallback int) int {
+	v := r.URL.Query().Get(key)
+	if v == "" {
+		return fallback
+	}
+	var n int
+	if _, err := fmt.Sscanf(v, "%d", &n); err != nil || n < 0 {
+		return fallback
+	}
+	return n
+}
