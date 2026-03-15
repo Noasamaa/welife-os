@@ -45,9 +45,9 @@
 
 ## 剩余 6 项（功能开发级，需独立规划）
 
-1. Cloud LLM API（`engine/internal/llm/cloud.go` 仅占位符）
-2. 前端测试覆盖（零 .test.ts 文件）
-3. API handler 测试（7 个 handler 34 个函数无测试）
+1. ~~Cloud LLM API（`engine/internal/llm/cloud.go` 仅占位符）~~ ✅ OpenAI 兼容实现
+2. ~~前端测试覆盖（零 .test.ts 文件）~~ ✅ vitest + 79 个组件/composable 测试
+3. ~~API handler 测试（7 个 handler 34 个函数无测试）~~ ✅ 48 个 handler 测试，覆盖率 68.3%
 4. Graph 持久化（纯内存，重启丢失）
 5. sqlite-vec 向量搜索集成（仅 NoopVectorStore）
 6. Tauri 原生功能（系统托盘 / 通知 / 自动更新）
