@@ -1,6 +1,12 @@
 package storage
 
-import "context"
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"strings"
+)
 
 // SaveEntity inserts or replaces an entity.
 func (s *Store) SaveEntity(ctx context.Context, e Entity) error {
@@ -35,6 +41,59 @@ func (s *Store) SaveEntities(ctx context.Context, entities []Entity) error {
 		}
 	}
 	return tx.Commit()
+}
+
+// GetEntity returns a single entity by ID.
+// Returns an error containing "not found" if no entity matches.
+func (s *Store) GetEntity(ctx context.Context, id string) (Entity, error) {
+	var e Entity
+	err := s.db.QueryRowContext(ctx, `
+		SELECT id, type, name, COALESCE(properties,''), COALESCE(source_conversation,'')
+		FROM entities WHERE id = ?`, id).
+		Scan(&e.ID, &e.Type, &e.Name, &e.Properties, &e.SourceConversation)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Entity{}, fmt.Errorf("entity %s not found", id)
+		}
+		return Entity{}, err
+	}
+	return e, nil
+}
+
+// SearchEntitiesByName returns entities whose name matches the query
+// (case-insensitive substring match), limited to at most maxResults rows.
+func (s *Store) SearchEntitiesByName(ctx context.Context, query string, maxResults int) ([]Entity, error) {
+	if maxResults <= 0 {
+		maxResults = 50
+	}
+	// Cap query length to prevent DoS via huge LIKE patterns.
+	const maxQueryLen = 200
+	if len(query) > maxQueryLen {
+		query = query[:maxQueryLen]
+	}
+	// Escape LIKE metacharacters so user input is treated as literal substring.
+	escaped := strings.ReplaceAll(query, "\\", "\\\\")
+	escaped = strings.ReplaceAll(escaped, "%", "\\%")
+	escaped = strings.ReplaceAll(escaped, "_", "\\_")
+	pattern := "%" + escaped + "%"
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, type, name, COALESCE(properties,''), COALESCE(source_conversation,'')
+		FROM entities WHERE name LIKE ? ESCAPE '\' COLLATE NOCASE
+		ORDER BY name LIMIT ?`, pattern, maxResults)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var entities []Entity
+	for rows.Next() {
+		var e Entity
+		if err := rows.Scan(&e.ID, &e.Type, &e.Name, &e.Properties, &e.SourceConversation); err != nil {
+			return nil, err
+		}
+		entities = append(entities, e)
+	}
+	return entities, rows.Err()
 }
 
 // FindEntitiesByType returns all entities of a given type.

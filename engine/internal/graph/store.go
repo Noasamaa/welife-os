@@ -193,6 +193,37 @@ type Stats struct {
 	EntityTypes       map[string]int `json:"entity_types"`
 }
 
+// HasNode returns true if the entity ID exists in the graph.
+func (gs *GraphStore) HasNode(entityID string) bool {
+	gs.mu.RLock()
+	defer gs.mu.RUnlock()
+	_, ok := gs.nodeIDs[entityID]
+	return ok
+}
+
+// Degree returns the total number of edges (in + out) for the given entity.
+// Returns 0 for unknown nodes.
+func (gs *GraphStore) Degree(entityID string) int {
+	gs.mu.RLock()
+	defer gs.mu.RUnlock()
+
+	nodeID, ok := gs.nodeIDs[entityID]
+	if !ok {
+		return 0
+	}
+
+	count := 0
+	to := gs.g.From(nodeID)
+	for to.Next() {
+		count++
+	}
+	from := gs.g.To(nodeID)
+	for from.Next() {
+		count++
+	}
+	return count
+}
+
 // Clone creates a deep copy of the GraphStore, duplicating the underlying
 // weighted directed graph, node ID maps, and sequence counter.
 func (gs *GraphStore) Clone() *GraphStore {

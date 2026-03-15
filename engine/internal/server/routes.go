@@ -63,6 +63,9 @@ func (s *Server) routes() http.Handler {
 		// Graph endpoints
 		api.Post("/graph/build", s.handleTriggerGraphBuild)
 		api.Get("/graph/overview", s.handleGraphOverview)
+		api.Get("/graph/nodes/{id}", s.handleGetGraphNode)
+		api.Get("/graph/nodes/{id}/neighborhood", s.handleGetGraphNeighborhood)
+		api.Get("/graph/search", s.handleGraphSearch)
 
 		// Forum debate endpoints
 		api.Post("/forum/debate", s.handleTriggerDebate)
