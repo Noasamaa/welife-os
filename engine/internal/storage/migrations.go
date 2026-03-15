@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-const currentSchemaVersion = 2
+const currentSchemaVersion = 3
 
 // migrateV1toV2 adds Phase 1 tables for conversations, messages, participants,
 // attachments, import jobs, entities, and relationships.
@@ -95,6 +95,37 @@ var migrateV1toV2 = []string{
 	`UPDATE schema_state SET version = 2, updated_at = CURRENT_TIMESTAMP WHERE id = 1;`,
 }
 
+// migrateV2toV3 adds forum_sessions and forum_messages tables for debate persistence.
+var migrateV2toV3 = []string{
+	`CREATE TABLE IF NOT EXISTS forum_sessions (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'running',
+    summary TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TEXT,
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id)
+);`,
+	`CREATE INDEX IF NOT EXISTS idx_forum_sessions_conversation ON forum_sessions(conversation_id);`,
+	`CREATE INDEX IF NOT EXISTS idx_forum_sessions_status ON forum_sessions(status);`,
+	`CREATE TABLE IF NOT EXISTS forum_messages (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    agent_name TEXT NOT NULL,
+    round INTEGER NOT NULL,
+    stance TEXT NOT NULL,
+    content TEXT NOT NULL,
+    evidence TEXT,
+    confidence REAL NOT NULL DEFAULT 0.0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES forum_sessions(id)
+);`,
+	`CREATE INDEX IF NOT EXISTS idx_forum_messages_session ON forum_messages(session_id);`,
+	`CREATE INDEX IF NOT EXISTS idx_forum_messages_round ON forum_messages(round);`,
+	`UPDATE schema_state SET version = 3, updated_at = CURRENT_TIMESTAMP WHERE id = 1;`,
+}
+
 // migrate checks the current schema version and applies pending migrations.
 func migrate(ctx context.Context, db *sql.DB) error {
 	var version int
@@ -111,6 +142,15 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		for _, stmt := range migrateV1toV2 {
 			if _, err := db.ExecContext(ctx, stmt); err != nil {
 				return fmt.Errorf("migrating v1 to v2: %w", err)
+			}
+		}
+		version = 2
+	}
+
+	if version == 2 {
+		for _, stmt := range migrateV2toV3 {
+			if _, err := db.ExecContext(ctx, stmt); err != nil {
+				return fmt.Errorf("migrating v2 to v3: %w", err)
 			}
 		}
 	}

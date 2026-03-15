@@ -91,3 +91,27 @@ type Relationship struct {
 	Weight          float64 `json:"weight"`
 	SourceMessageID string  `json:"source_message_id,omitempty"`
 }
+
+// ForumSession represents a debate session.
+type ForumSession struct {
+	ID             string `json:"id"`
+	ConversationID string `json:"conversation_id"`
+	TaskID         string `json:"task_id"`
+	Status         string `json:"status"`
+	Summary        string `json:"summary,omitempty"`
+	CreatedAt      string `json:"created_at"`
+	CompletedAt    string `json:"completed_at,omitempty"`
+}
+
+// ForumMessageRecord represents a single message in a debate session.
+type ForumMessageRecord struct {
+	ID         string  `json:"id"`
+	SessionID  string  `json:"session_id"`
+	AgentName  string  `json:"agent_name"`
+	Round      int     `json:"round"`
+	Stance     string  `json:"stance"`
+	Content    string  `json:"content"`
+	Evidence   string  `json:"evidence,omitempty"`
+	Confidence float64 `json:"confidence"`
+	CreatedAt  string  `json:"created_at"`
+}
