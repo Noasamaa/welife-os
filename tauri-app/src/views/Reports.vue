@@ -89,7 +89,11 @@
     <div v-if="currentReport && parsedContent" class="card detail-panel">
       <div class="panel-header">
         <h3>报告内容</h3>
-        <button class="btn-danger" @click="handleDelete">删除</button>
+        <div class="panel-actions">
+          <button class="btn-secondary" @click="handleExportHTML">导出 HTML</button>
+          <button class="btn-secondary" @click="handleExportPDF">导出 PDF</button>
+          <button class="btn-danger" @click="handleDelete">删除</button>
+        </div>
       </div>
       <ReportViewer :content="parsedContent" />
     </div>
@@ -103,7 +107,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { useReport } from "../composables/useReport";
-import { fetchConversations } from "../services/api";
+import { fetchConversations, reportHTMLUrl, reportPDFUrl } from "../services/api";
 import type { Conversation } from "../types/import";
 import type { ReportType } from "../types/report";
 import ReportViewer from "../components/ReportViewer.vue";
@@ -155,6 +159,16 @@ async function handleSelect(id: string) {
 async function handleDelete() {
   if (!currentReport.value) return;
   await remove(currentReport.value.id);
+}
+
+function handleExportHTML() {
+  if (!currentReport.value) return;
+  window.open(reportHTMLUrl(currentReport.value.id), "_blank");
+}
+
+function handleExportPDF() {
+  if (!currentReport.value) return;
+  window.open(reportPDFUrl(currentReport.value.id), "_blank");
 }
 
 function typeLabel(type: string): string {
@@ -266,6 +280,8 @@ function statusLabel(status: string): string {
 }
 
 .panel-header h3 { margin: 0; }
+
+.panel-actions { display: flex; gap: 8px; align-items: center; }
 
 .loading, .empty {
   text-align: center;

@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -81,4 +82,79 @@ func (s *Server) handleDeleteReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
+func (s *Server) handleExportReportHTML(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	rpt, err := s.reportGenerator.GetReport(r.Context(), id)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if strings.Contains(err.Error(), "not found") {
+			status = http.StatusNotFound
+		}
+		writeJSON(w, status, map[string]string{"error": err.Error()})
+		return
+	}
+
+	content, err := parseReportContent(rpt)
+	if err != nil {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		return
+	}
+
+	html, err := s.renderer.RenderHTML(content)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to render HTML: " + err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	fmt.Fprint(w, html)
+}
+
+func (s *Server) handleExportReportPDF(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	rpt, err := s.reportGenerator.GetReport(r.Context(), id)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if strings.Contains(err.Error(), "not found") {
+			status = http.StatusNotFound
+		}
+		writeJSON(w, status, map[string]string{"error": err.Error()})
+		return
+	}
+
+	content, err := parseReportContent(rpt)
+	if err != nil {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		return
+	}
+
+	html, err := s.renderer.RenderHTML(content)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to render HTML: " + err.Error()})
+		return
+	}
+
+	pdf, err := s.renderer.RenderPDF(r.Context(), html)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to render PDF: " + err.Error()})
+		return
+	}
+
+	filename := content.Title + ".pdf"
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	w.Write(pdf)
+}
+
+func parseReportContent(rpt storage.Report) (report.ReportContent, error) {
+	if rpt.Status != "completed" {
+		return report.ReportContent{}, fmt.Errorf("report status is %q, not completed", rpt.Status)
+	}
+	var content report.ReportContent
+	if err := json.Unmarshal([]byte(rpt.Content), &content); err != nil {
+		return report.ReportContent{}, fmt.Errorf("parsing report content: %w", err)
+	}
+	return content, nil
 }

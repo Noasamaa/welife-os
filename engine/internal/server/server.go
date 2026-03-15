@@ -21,7 +21,7 @@ import (
 	"github.com/welife-os/welife-os/engine/internal/task"
 )
 
-const Version = "0.1.0"
+const Version = "1.0.0"
 
 type Config struct {
 	Host          string
@@ -45,6 +45,7 @@ type Server struct {
 	graphEngine *graph.Engine
 	forumEngine *forum.Engine
 	reportGenerator *report.Generator
+	renderer        *report.Renderer
 	coachAgent      *agent.CoachAgent
 	simEngine       *simulation.Engine
 	reminderService *reminder.Service
@@ -119,6 +120,7 @@ func New(cfg Config) (*Server, error) {
 		report.NewMessageSearchTool(store),
 	}
 	server.reportGenerator = report.NewGenerator(llmClient, store, server.taskManager, reportTools)
+	server.renderer = report.NewRenderer()
 
 	// Initialize simulation engine
 	profiler := simulation.NewProfileBuilder(llmClient, store)

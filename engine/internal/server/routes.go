@@ -65,6 +65,8 @@ func (s *Server) routes() http.Handler {
 	router.Get("/api/v1/reports", s.handleListReports)
 	router.Get("/api/v1/reports/{id}", s.handleGetReport)
 	router.Delete("/api/v1/reports/{id}", s.handleDeleteReport)
+	router.Get("/api/v1/reports/{id}/html", s.handleExportReportHTML)
+	router.Get("/api/v1/reports/{id}/pdf", s.handleExportReportPDF)
 
 	// Coach / Action Items endpoints
 	router.Post("/api/v1/coach/generate-plan", s.handleGenerateActionPlan)

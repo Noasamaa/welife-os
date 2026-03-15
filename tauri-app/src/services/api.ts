@@ -142,6 +142,14 @@ export async function deleteReport(id: string): Promise<void> {
   if (!res.ok) throw new Error(`delete report: ${res.status}`);
 }
 
+export function reportHTMLUrl(id: string): string {
+  return `${API_BASE_URL}/api/v1/reports/${encodeURIComponent(id)}/html`;
+}
+
+export function reportPDFUrl(id: string): string {
+  return `${API_BASE_URL}/api/v1/reports/${encodeURIComponent(id)}/pdf`;
+}
+
 // Coach / Action Items
 export async function generateActionPlan(
   sessionID: string,
