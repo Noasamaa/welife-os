@@ -66,6 +66,29 @@ func (s *Server) routes() http.Handler {
 	router.Get("/api/v1/reports/{id}", s.handleGetReport)
 	router.Delete("/api/v1/reports/{id}", s.handleDeleteReport)
 
+	// Coach / Action Items endpoints
+	router.Post("/api/v1/coach/generate-plan", s.handleGenerateActionPlan)
+	router.Get("/api/v1/action-items", s.handleListActionItems)
+	router.Get("/api/v1/action-items/{id}", s.handleGetActionItem)
+	router.Patch("/api/v1/action-items/{id}", s.handleUpdateActionItem)
+	router.Delete("/api/v1/action-items/{id}", s.handleDeleteActionItem)
+
+	// Reminder endpoints
+	router.Get("/api/v1/reminders/pending", s.handlePendingReminders)
+	router.Patch("/api/v1/reminders/{id}/read", s.handleMarkReminderRead)
+	router.Patch("/api/v1/reminders/{id}/dismiss", s.handleDismissReminder)
+	router.Get("/api/v1/reminder-rules", s.handleListReminderRules)
+	router.Post("/api/v1/reminder-rules", s.handleCreateReminderRule)
+	router.Patch("/api/v1/reminder-rules/{id}", s.handleUpdateReminderRule)
+	router.Delete("/api/v1/reminder-rules/{id}", s.handleDeleteReminderRule)
+
+	// Simulation endpoints
+	router.Post("/api/v1/simulation/profiles/build", s.handleBuildProfiles)
+	router.Get("/api/v1/simulation/profiles", s.handleListProfiles)
+	router.Post("/api/v1/simulation/run", s.handleRunSimulation)
+	router.Get("/api/v1/simulation/sessions", s.handleListSimulations)
+	router.Get("/api/v1/simulation/sessions/{id}", s.handleGetSimulation)
+
 	return router
 }
 
