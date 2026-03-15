@@ -17,7 +17,6 @@
 
     <div class="footnote">
       <p>v1.0.0</p>
-      <small>先把结构搭稳，再接入导入、报告与 Agent 能力。</small>
     </div>
   </aside>
 </template>

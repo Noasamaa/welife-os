@@ -3,14 +3,14 @@
     <section class="card block">
       <h2>导入聊天记录</h2>
       <DropZone accept=".csv,.json,.txt,.db,.sqlite,.sqlite3" @file="onFile" />
-      <p v-if="importState.uploading.value" class="status-msg">上传中...</p>
-      <p v-if="importState.error.value" class="status-msg error">{{ importState.error.value }}</p>
+      <p v-if="importState.uploading" class="status-msg">上传中...</p>
+      <p v-if="importState.error" class="status-msg error">{{ importState.error }}</p>
       <p v-if="graphStatus" class="status-msg">{{ graphStatus }}</p>
     </section>
 
     <section class="card block">
       <h2>导入记录</h2>
-      <ImportJobList :jobs="importState.jobs.value" />
+      <ImportJobList :jobs="importState.jobs" />
     </section>
 
     <section class="card block">
@@ -19,23 +19,23 @@
         <button
           v-if="conversations.length"
           class="btn"
-          :disabled="graphState.building.value"
+          :disabled="graphState.building"
           @click="onBuildGraph"
         >
-          {{ graphState.building.value ? "构建中..." : "构建图谱" }}
+          {{ graphState.building ? "构建中..." : "构建图谱" }}
         </button>
       </div>
       <GraphView
-        :overview="graphState.overview.value"
-        :loading="graphState.loading.value"
-        :error="graphState.error.value"
+        :overview="graphState.overview"
+        :loading="graphState.loading"
+        :error="graphState.error"
       />
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue";
+import { onMounted, onUnmounted, ref, reactive } from "vue";
 import DropZone from "../components/DropZone.vue";
 import ImportJobList from "../components/ImportJobList.vue";
 import GraphView from "../components/GraphView.vue";
@@ -44,8 +44,8 @@ import { useGraph } from "../composables/useGraph";
 import { fetchConversations } from "../services/api";
 import type { Conversation } from "../types/import";
 
-const importState = useImport();
-const graphState = useGraph();
+const importState = reactive(useImport());
+const graphState = reactive(useGraph());
 const conversations = ref<Conversation[]>([]);
 const graphStatus = ref("");
 let graphPollHandle: ReturnType<typeof setInterval> | null = null;
