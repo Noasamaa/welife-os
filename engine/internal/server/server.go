@@ -249,29 +249,3 @@ func applySettingsToLLMConfig(base llm.Config, settings map[string]string) llm.C
 	}
 	return base
 }
-
-func (s *Server) loadLLMConfig(ctx context.Context) (llm.Config, error) {
-	settings, err := s.store.GetSettings(ctx, llmSettingKeys)
-	if err != nil {
-		return llm.Config{}, fmt.Errorf("load llm settings: %w", err)
-	}
-	return applySettingsToLLMConfig(baseLLMConfig(s.config), settings), nil
-}
-
-// swapLLMClient rebuilds the LLM client from DB settings (falling back to
-// the original env config) and hot-swaps it into the running server.
-func (s *Server) swapLLMClient(ctx context.Context) error {
-	cfg, err := s.loadLLMConfig(ctx)
-	if err != nil {
-		return err
-	}
-
-	newClient, err := llm.NewClient(cfg)
-	if err != nil {
-		return fmt.Errorf("swap LLM client: %w", err)
-	}
-
-	s.llmClient.Swap(newClient)
-	log.Printf("llm-config: swapped to provider=%s url=%s model=%s", cfg.Provider, cfg.BaseURL, cfg.Model)
-	return nil
-}

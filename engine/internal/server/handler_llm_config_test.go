@@ -35,11 +35,7 @@ func TestUpdateLLMConfigRejectsInvalidConfigWithoutPersisting(t *testing.T) {
 	getRec := doJSON(t, app, http.MethodGet, "/api/v1/system/llm-config", nil)
 	assertStatus(t, getRec, http.StatusOK)
 
-	var payload struct {
-		Provider string `json:"provider"`
-		Model    string `json:"model"`
-	}
-	payload = decodeJSON[struct {
+	payload := decodeJSON[struct {
 		Provider string `json:"provider"`
 		Model    string `json:"model"`
 	}](t, getRec)
