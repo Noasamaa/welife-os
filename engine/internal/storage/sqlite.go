@@ -10,6 +10,7 @@ import (
 	"time"
 
 	_ "github.com/mutecomm/go-sqlcipher/v4"
+	_ "github.com/welife-os/welife-os/engine/internal/storage/sqlitevec"
 )
 
 type Config struct {
