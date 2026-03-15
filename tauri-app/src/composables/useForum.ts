@@ -44,7 +44,7 @@ export function useForum() {
     error.value = null;
     try {
       const result = await triggerDebate(conversationID);
-      await loadSessions();
+      await Promise.all([loadSessions(), loadSession(result.session_id)]);
       return result;
     } catch (e: any) {
       error.value = e.message ?? "启动辩论失败";

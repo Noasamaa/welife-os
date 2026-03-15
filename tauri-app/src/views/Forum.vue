@@ -5,7 +5,6 @@
       <p class="subtitle">多 Agent 交叉辩论，发现深层洞见</p>
     </div>
 
-    <!-- Start Debate Panel -->
     <div class="card start-panel">
       <h3>发起新辩论</h3>
       <div class="start-form">
@@ -29,12 +28,10 @@
       </div>
     </div>
 
-    <!-- Error Display -->
     <div v-if="error" class="card error-banner">
       {{ error }}
     </div>
 
-    <!-- Session List -->
     <div class="card sessions-panel">
       <div class="panel-header">
         <h3>辩论会话</h3>
@@ -68,7 +65,6 @@
       </div>
     </div>
 
-    <!-- Session Detail -->
     <div v-if="currentSession" class="card detail-panel">
       <div class="panel-header">
         <h3>辩论详情</h3>
@@ -77,13 +73,11 @@
         </span>
       </div>
 
-      <!-- Summary -->
       <div v-if="currentSession.session.summary" class="summary-box">
         <h4>共识摘要</h4>
         <p>{{ currentSession.session.summary }}</p>
       </div>
 
-      <!-- Debate Timeline -->
       <DebateTimeline
         v-if="currentSession.messages && currentSession.messages.length > 0"
         :messages="currentSession.messages"
@@ -95,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useForum } from "../composables/useForum";
 import { fetchConversations } from "../services/api";
 import type { Conversation } from "../types/import";
@@ -114,10 +108,29 @@ const {
 
 const conversations = ref<Conversation[]>([]);
 const selectedConversation = ref("");
+let pollHandle: ReturnType<typeof setInterval> | null = null;
 
 onMounted(async () => {
   await Promise.all([loadSessions(), loadConversations()]);
 });
+
+onUnmounted(() => {
+  stopPolling();
+});
+
+watch(
+  () => currentSession.value?.session,
+  (session) => {
+    stopPolling();
+    if (!session || session.status !== "running") {
+      return;
+    }
+    pollHandle = setInterval(() => {
+      void Promise.all([loadSession(session.id), loadSessions()]);
+    }, 2000);
+  },
+  { immediate: true },
+);
 
 async function loadConversations() {
   try {
@@ -134,6 +147,13 @@ async function handleStartDebate() {
 
 async function handleSelectSession(id: string) {
   await loadSession(id);
+}
+
+function stopPolling() {
+  if (pollHandle !== null) {
+    clearInterval(pollHandle);
+    pollHandle = null;
+  }
 }
 
 function statusLabel(status: string): string {
@@ -260,53 +280,54 @@ function statusLabel(status: string): string {
 
 .session-item.active {
   border-color: var(--color-primary, #4a90d9);
-  background: #f0f7ff;
+  background: #f3f8fd;
 }
 
 .session-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 4px;
 }
 
 .session-id {
   font-family: monospace;
   font-size: 13px;
+  color: var(--color-text, #333);
+}
+
+.session-meta {
+  font-size: 12px;
+  color: var(--color-text-secondary, #888);
 }
 
 .status-badge {
-  padding: 2px 8px;
-  border-radius: 10px;
+  padding: 2px 10px;
+  border-radius: 12px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .status-running {
-  background: #fef3e2;
-  color: #e67e22;
+  background: #e8f4fd;
+  color: #2980b9;
 }
 
 .status-completed {
-  background: #e8f8ef;
+  background: #e8f8f0;
   color: #27ae60;
 }
 
 .status-failed {
   background: #fde8e8;
-  color: #e74c3c;
-}
-
-.session-meta {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--color-text-secondary, #888);
+  color: #c0392b;
 }
 
 .summary-box {
-  background: var(--color-bg-secondary, #f8f9fa);
-  border-radius: 8px;
-  padding: 16px;
   margin-bottom: 20px;
+  padding: 16px;
+  background: var(--color-bg-secondary, #f8f8f8);
+  border-radius: 8px;
 }
 
 .summary-box h4 {
@@ -316,7 +337,6 @@ function statusLabel(status: string): string {
 
 .summary-box p {
   margin: 0;
-  font-size: 14px;
   line-height: 1.6;
   white-space: pre-wrap;
 }

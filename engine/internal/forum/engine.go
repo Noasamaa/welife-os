@@ -133,6 +133,10 @@ func (e *Engine) executeDebate(ctx context.Context, sessionID, conversationID st
 		return err
 	}
 
+	if len(topics) == 0 {
+		topics = []string{"请围绕当前最重要的分歧、证据和行动建议继续辩论"}
+	}
+
 	var allDebateMsgs []agent.ForumMessage
 	for _, r1 := range round1Msgs {
 		allDebateMsgs = append(allDebateMsgs, toAgentMessage(r1))
