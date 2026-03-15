@@ -115,3 +115,106 @@ type ForumMessageRecord struct {
 	Confidence float64 `json:"confidence"`
 	CreatedAt  string  `json:"created_at"`
 }
+
+// Report represents a generated life report.
+type Report struct {
+	ID             string `json:"id"`
+	Type           string `json:"type"`
+	ConversationID string `json:"conversation_id"`
+	TaskID         string `json:"task_id"`
+	Status         string `json:"status"`
+	Title          string `json:"title"`
+	Content        string `json:"content"`
+	PeriodStart    string `json:"period_start"`
+	PeriodEnd      string `json:"period_end"`
+	CreatedAt      string `json:"created_at"`
+	CompletedAt    string `json:"completed_at,omitempty"`
+}
+
+// MessageSearchParams defines filters for keyword-based message search.
+type MessageSearchParams struct {
+	Keyword        string
+	ConversationID string
+	SenderName     string
+	After          string
+	Before         string
+	Limit          int
+}
+
+// ActionItem represents an actionable task extracted by the ExecutionCoach.
+type ActionItem struct {
+	ID              string `json:"id"`
+	SourceAgent     string `json:"source_agent"`
+	SourceSessionID string `json:"source_session_id,omitempty"`
+	Title           string `json:"title"`
+	Description     string `json:"description"`
+	Priority        string `json:"priority"`
+	Status          string `json:"status"`
+	Category        string `json:"category"`
+	RelatedEntityID string `json:"related_entity_id,omitempty"`
+	DueDate         string `json:"due_date,omitempty"`
+	CompletedAt     string `json:"completed_at,omitempty"`
+	CreatedAt       string `json:"created_at"`
+}
+
+// ReminderRule defines a rule for generating reminders.
+type ReminderRule struct {
+	ID              string `json:"id"`
+	ActionItemID    string `json:"action_item_id,omitempty"`
+	RuleType        string `json:"rule_type"`
+	EntityID        string `json:"entity_id,omitempty"`
+	ThresholdDays   int    `json:"threshold_days,omitempty"`
+	CronExpr        string `json:"cron_expr,omitempty"`
+	MessageTemplate string `json:"message_template"`
+	Enabled         bool   `json:"enabled"`
+	LastTriggeredAt string `json:"last_triggered_at,omitempty"`
+	CreatedAt       string `json:"created_at"`
+}
+
+// Reminder represents a fired reminder instance.
+type Reminder struct {
+	ID          string `json:"id"`
+	RuleID      string `json:"rule_id"`
+	Message     string `json:"message"`
+	Status      string `json:"status"`
+	TriggeredAt string `json:"triggered_at"`
+	ReadAt      string `json:"read_at,omitempty"`
+}
+
+// PersonProfile is a digital avatar generated from graph entity data.
+type PersonProfile struct {
+	ID                    string `json:"id"`
+	EntityID              string `json:"entity_id"`
+	Name                  string `json:"name"`
+	Personality           string `json:"personality"`
+	RelationshipToSelf    string `json:"relationship_to_self"`
+	BehavioralPatterns    string `json:"behavioral_patterns,omitempty"`
+	SourceConversationIDs string `json:"source_conversation_ids,omitempty"`
+	CreatedAt             string `json:"created_at"`
+	UpdatedAt             string `json:"updated_at"`
+}
+
+// SimulationSession represents a parallel life simulation run.
+type SimulationSession struct {
+	ID                    string `json:"id"`
+	TaskID                string `json:"task_id"`
+	ForkDescription       string `json:"fork_description"`
+	Status                string `json:"status"`
+	StepCount             int    `json:"step_count"`
+	OriginalGraphSnapshot string `json:"original_graph_snapshot,omitempty"`
+	FinalGraphSnapshot    string `json:"final_graph_snapshot,omitempty"`
+	Narrative             string `json:"narrative,omitempty"`
+	CreatedAt             string `json:"created_at"`
+	CompletedAt           string `json:"completed_at,omitempty"`
+}
+
+// SimulationStep represents one evolution step in a simulation.
+type SimulationStep struct {
+	ID            string `json:"id"`
+	SessionID     string `json:"session_id"`
+	StepNumber    int    `json:"step_number"`
+	Description   string `json:"description"`
+	EntityChanges string `json:"entity_changes"`
+	Reactions     string `json:"reactions"`
+	CreatedAt     string `json:"created_at"`
+}

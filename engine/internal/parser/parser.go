@@ -16,6 +16,10 @@ const (
 	FormatTelegramJSON Format = "telegram_json"
 	FormatWhatsAppTXT  Format = "whatsapp_txt"
 	FormatGenericCSV   Format = "generic_csv"
+	FormatIMessageDB   Format = "imessage_db"
+	FormatQQExport     Format = "qq_export"
+	FormatDiscordJSON  Format = "discord_json"
+	FormatLarkJSON     Format = "lark_json"
 )
 
 // Options configures parser behavior.

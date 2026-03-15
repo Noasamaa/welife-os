@@ -192,3 +192,65 @@ type Stats struct {
 	RelationshipCount int            `json:"relationship_count"`
 	EntityTypes       map[string]int `json:"entity_types"`
 }
+
+// Clone creates a deep copy of the GraphStore, duplicating the underlying
+// weighted directed graph, node ID maps, and sequence counter.
+func (gs *GraphStore) Clone() *GraphStore {
+	gs.mu.RLock()
+	defer gs.mu.RUnlock()
+
+	cloned := &GraphStore{
+		g:       simple.NewWeightedDirectedGraph(0, 0),
+		nodeIDs: make(map[string]int64, len(gs.nodeIDs)),
+		idToKey: make(map[int64]string, len(gs.idToKey)),
+		seq:     gs.seq,
+	}
+
+	// Copy all nodes.
+	nodes := gs.g.Nodes()
+	for nodes.Next() {
+		n := nodes.Node()
+		cloned.g.AddNode(simple.Node(n.ID()))
+	}
+
+	// Copy all weighted edges.
+	edges := gs.g.WeightedEdges()
+	for edges.Next() {
+		e := edges.WeightedEdge()
+		cloned.g.SetWeightedEdge(simple.WeightedEdge{
+			F: simple.Node(e.From().ID()),
+			T: simple.Node(e.To().ID()),
+			W: e.Weight(),
+		})
+	}
+
+	// Copy maps.
+	for k, v := range gs.nodeIDs {
+		cloned.nodeIDs[k] = v
+	}
+	for k, v := range gs.idToKey {
+		cloned.idToKey[k] = v
+	}
+
+	return cloned
+}
+
+// AllEdges returns every edge in the graph as a slice of Edge structs.
+func (gs *GraphStore) AllEdges() []Edge {
+	gs.mu.RLock()
+	defer gs.mu.RUnlock()
+
+	var result []Edge
+	edges := gs.g.WeightedEdges()
+	for edges.Next() {
+		e := edges.WeightedEdge()
+		sourceKey := gs.idToKey[e.From().ID()]
+		targetKey := gs.idToKey[e.To().ID()]
+		result = append(result, Edge{
+			Source: sourceKey,
+			Target: targetKey,
+			Weight: e.Weight(),
+		})
+	}
+	return result
+}

@@ -14,6 +14,9 @@ import (
 	"github.com/welife-os/welife-os/engine/internal/importer"
 	"github.com/welife-os/welife-os/engine/internal/llm"
 	"github.com/welife-os/welife-os/engine/internal/parser"
+	"github.com/welife-os/welife-os/engine/internal/reminder"
+	"github.com/welife-os/welife-os/engine/internal/report"
+	"github.com/welife-os/welife-os/engine/internal/simulation"
 	"github.com/welife-os/welife-os/engine/internal/storage"
 	"github.com/welife-os/welife-os/engine/internal/task"
 )
@@ -41,6 +44,10 @@ type Server struct {
 	importer    *importer.Service
 	graphEngine *graph.Engine
 	forumEngine *forum.Engine
+	reportGenerator *report.Generator
+	coachAgent      *agent.CoachAgent
+	simEngine       *simulation.Engine
+	reminderService *reminder.Service
 	router      http.Handler
 	httpServer  *http.Server
 	shutdown    sync.Once
@@ -79,6 +86,10 @@ func New(cfg Config) (*Server, error) {
 	registry.Register(parser.NewTelegramParser())
 	registry.Register(parser.NewWhatsAppParser())
 	registry.Register(parser.NewGenericCSVParser())
+	registry.Register(parser.NewDiscordParser())
+	registry.Register(parser.NewQQParser())
+	registry.Register(parser.NewLarkParser())
+	registry.Register(parser.NewIMessageParser())
 
 	server.importer = importer.NewService(registry, store, server.taskManager)
 
@@ -86,14 +97,36 @@ func New(cfg Config) (*Server, error) {
 	extractor := graph.NewExtractor(llmClient)
 	server.graphEngine = graph.NewEngine(store, extractor, server.taskManager)
 
-	// Initialize forum debate engine
+	// Initialize agents (coach + simulator participate in forum debates)
+	coachAgent := agent.NewCoachAgent(llmClient, store)
+	simulatorAgent := agent.NewSimulatorAgent(llmClient)
+	server.coachAgent = coachAgent
+
 	agents := []agent.Agent{
 		agent.NewEmotionAgent(llmClient),
 		agent.NewOpportunityAgent(llmClient),
 		agent.NewRiskAgent(llmClient),
+		coachAgent,
+		simulatorAgent,
 	}
 	moderator := forum.NewModerator(llmClient)
 	server.forumEngine = forum.NewEngine(agents, moderator, store, server.taskManager)
+
+	// Initialize report generator
+	reportTools := []report.Tool{
+		report.NewGraphSearchTool(store),
+		report.NewForumSearchTool(store),
+		report.NewMessageSearchTool(store),
+	}
+	server.reportGenerator = report.NewGenerator(llmClient, store, server.taskManager, reportTools)
+
+	// Initialize simulation engine
+	profiler := simulation.NewProfileBuilder(llmClient, store)
+	server.simEngine = simulation.NewEngine(llmClient, store, server.taskManager, profiler, server.graphEngine.GraphStore())
+
+	// Initialize reminder service
+	server.reminderService = reminder.NewService(store)
+	server.reminderService.Start(context.Background())
 
 	server.router = server.routes()
 	server.httpServer = &http.Server{
@@ -119,6 +152,10 @@ func (s *Server) ListenAndServe() error {
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.shutdown.Do(func() {
 		var errs []error
+		// Stop reminder scheduler first
+		if s.reminderService != nil {
+			s.reminderService.Stop()
+		}
 		if s.httpServer != nil {
 			if err := s.httpServer.Shutdown(ctx); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				errs = append(errs, err)

@@ -9,6 +9,7 @@ import type {
   ForumSession,
   ForumSessionDetail,
 } from "../types/forum";
+import type { Report, ReportType } from "../types/report";
 
 export const API_BASE_URL = "http://127.0.0.1:18080";
 
@@ -97,4 +98,43 @@ export async function fetchForumSession(
   const res = await fetch(`${API_BASE_URL}/api/v1/forum/sessions/${id}`);
   if (!res.ok) throw new Error(`fetch session: ${res.status}`);
   return (await res.json()) as ForumSessionDetail;
+}
+
+// Reports
+export async function generateReport(
+  type: ReportType,
+  conversationID: string,
+  periodStart?: string,
+  periodEnd?: string,
+): Promise<{ report_id: string; task_id: string }> {
+  const body: Record<string, string> = { type, conversation_id: conversationID };
+  if (periodStart) body.period_start = periodStart;
+  if (periodEnd) body.period_end = periodEnd;
+
+  const res = await fetch(`${API_BASE_URL}/api/v1/reports/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return (await res.json()) as { report_id: string; task_id: string };
+}
+
+export async function fetchReports(): Promise<Report[]> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/reports`);
+  if (!res.ok) throw new Error(`fetch reports: ${res.status}`);
+  return (await res.json()) as Report[];
+}
+
+export async function fetchReport(id: string): Promise<Report> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/reports/${id}`);
+  if (!res.ok) throw new Error(`fetch report: ${res.status}`);
+  return (await res.json()) as Report;
+}
+
+export async function deleteReport(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/reports/${id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(`delete report: ${res.status}`);
 }

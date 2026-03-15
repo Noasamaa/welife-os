@@ -27,6 +27,11 @@ func NewEngine(store *storage.Store, extractor *Extractor, tasks *task.Manager) 
 	}
 }
 
+// GraphStore returns the in-memory graph store for cloning and queries.
+func (e *Engine) GraphStore() *GraphStore {
+	return e.graph
+}
+
 // BuildGraph triggers async entity extraction for a conversation.
 // Returns a task ID for progress tracking.
 func (e *Engine) BuildGraph(ctx context.Context, conversationID string) (string, error) {
