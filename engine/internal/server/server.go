@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/welife-os/welife-os/engine/internal/graph"
 	"github.com/welife-os/welife-os/engine/internal/importer"
 	"github.com/welife-os/welife-os/engine/internal/llm"
 	"github.com/welife-os/welife-os/engine/internal/parser"
@@ -36,6 +37,7 @@ type Server struct {
 	llmClient   *llm.Client
 	taskManager *task.Manager
 	importer    *importer.Service
+	graphEngine *graph.Engine
 	router      http.Handler
 	httpServer  *http.Server
 	shutdown    sync.Once
@@ -76,6 +78,10 @@ func New(cfg Config) (*Server, error) {
 	registry.Register(parser.NewGenericCSVParser())
 
 	server.importer = importer.NewService(registry, store, server.taskManager)
+
+	// Initialize graph engine
+	extractor := graph.NewExtractor(llmClient)
+	server.graphEngine = graph.NewEngine(store, extractor, server.taskManager)
 	server.router = server.routes()
 	server.httpServer = &http.Server{
 		Addr:              cfg.Addr(),

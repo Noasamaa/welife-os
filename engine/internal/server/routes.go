@@ -51,6 +51,10 @@ func (s *Server) routes() http.Handler {
 	router.Get("/api/v1/conversations/{id}", s.handleGetConversation)
 	router.Get("/api/v1/conversations/{id}/messages", s.handleGetMessages)
 
+	// Graph endpoints
+	router.Post("/api/v1/graph/build", s.handleTriggerGraphBuild)
+	router.Get("/api/v1/graph/overview", s.handleGraphOverview)
+
 	return router
 }
 

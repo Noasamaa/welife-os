@@ -63,3 +63,22 @@ func (c *Client) Status(ctx context.Context) StatusInfo {
 		Model:     c.model,
 	}
 }
+
+// Generate sends a prompt to the LLM and returns the complete response text.
+func (c *Client) Generate(ctx context.Context, prompt string) (string, error) {
+	req := &api.GenerateRequest{
+		Model:  c.model,
+		Prompt: prompt,
+		Stream: new(bool), // false = non-streaming
+	}
+
+	var response string
+	err := c.client.Generate(ctx, req, func(resp api.GenerateResponse) error {
+		response += resp.Response
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return response, nil
+}
