@@ -1,4 +1,10 @@
 import type { SystemStatusResponse } from "../types/api";
+import type {
+  ImportResult,
+  ImportJob,
+  Conversation,
+  GraphOverview,
+} from "../types/import";
 
 export const API_BASE_URL = "http://127.0.0.1:18080";
 
@@ -9,4 +15,55 @@ export async function fetchSystemStatus(): Promise<SystemStatusResponse> {
   }
 
   return (await response.json()) as SystemStatusResponse;
+}
+
+// Import
+export async function uploadFile(
+  file: File,
+  format?: string,
+  selfName?: string,
+): Promise<ImportResult> {
+  const form = new FormData();
+  form.append("file", file);
+  if (format) form.append("format", format);
+  if (selfName) form.append("self_name", selfName);
+
+  const res = await fetch(`${API_BASE_URL}/api/v1/import`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return (await res.json()) as ImportResult;
+}
+
+export async function fetchImportJobs(): Promise<ImportJob[]> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/import/jobs`);
+  if (!res.ok) throw new Error(`fetch jobs: ${res.status}`);
+  return (await res.json()) as ImportJob[];
+}
+
+// Conversations
+export async function fetchConversations(): Promise<Conversation[]> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/conversations`);
+  if (!res.ok) throw new Error(`fetch conversations: ${res.status}`);
+  return (await res.json()) as Conversation[];
+}
+
+// Graph
+export async function triggerGraphBuild(
+  conversationID: string,
+): Promise<{ task_id: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/graph/build`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ conversation_id: conversationID }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return (await res.json()) as { task_id: string };
+}
+
+export async function fetchGraphOverview(): Promise<GraphOverview> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/graph/overview`);
+  if (!res.ok) throw new Error(`fetch graph: ${res.status}`);
+  return (await res.json()) as GraphOverview;
 }
