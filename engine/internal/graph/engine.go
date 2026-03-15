@@ -3,6 +3,7 @@ package graph
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/welife-os/welife-os/engine/internal/storage"
@@ -30,6 +31,31 @@ func NewEngine(store *storage.Store, extractor *Extractor, tasks *task.Manager) 
 // GraphStore returns the in-memory graph store for cloning and queries.
 func (e *Engine) GraphStore() *GraphStore {
 	return e.graph
+}
+
+// Load rebuilds the in-memory graph from persisted entities and relationships.
+// Call once at server startup, before the graph is used by other modules.
+func (e *Engine) Load(ctx context.Context) error {
+	entities, err := e.store.ListEntities(ctx)
+	if err != nil {
+		return fmt.Errorf("loading entities: %w", err)
+	}
+
+	rels, err := e.store.ListRelationships(ctx)
+	if err != nil {
+		return fmt.Errorf("loading relationships: %w", err)
+	}
+
+	for _, ent := range entities {
+		e.graph.AddNode(ent.ID)
+	}
+	for _, rel := range rels {
+		_ = e.graph.AddEdge(rel.SourceEntityID, rel.TargetEntityID, rel.Weight)
+	}
+
+	log.Printf("graph: loaded %d entities, %d relationships from database",
+		len(entities), len(rels))
+	return nil
 }
 
 // BuildGraph triggers async entity extraction for a conversation.

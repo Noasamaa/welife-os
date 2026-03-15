@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -101,6 +102,11 @@ func New(cfg Config) (*Server, error) {
 	// Initialize graph engine
 	extractor := graph.NewExtractor(llmClient)
 	server.graphEngine = graph.NewEngine(store, extractor, server.taskManager)
+
+	// Restore in-memory graph from persisted entities and relationships.
+	if err := server.graphEngine.Load(context.Background()); err != nil {
+		log.Printf("graph: failed to load persisted graph: %v", err)
+	}
 
 	// Initialize agents (coach + simulator participate in forum debates)
 	coachAgent := agent.NewCoachAgent(llmClient, store)
