@@ -1,0 +1,15 @@
+.DS_Store
+.idea/
+.vscode/
+*.log
+*.sqlite3
+*.db
+*.pdf
+
+engine/.data/
+engine/bin/
+engine/coverage.out
+
+tauri-app/node_modules/
+tauri-app/dist/
+tauri-app/src-tauri/target/
