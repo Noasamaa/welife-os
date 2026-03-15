@@ -35,6 +35,7 @@ func (t *GraphSearchTool) Description() string {
 func (t *GraphSearchTool) Execute(ctx context.Context, params map[string]string) (string, error) {
 	entityType := params["entity_type"]
 	entityName := params["entity_name"]
+	conversationID := params["conversation_id"]
 
 	var entities []storage.Entity
 	var err error
@@ -53,6 +54,15 @@ func (t *GraphSearchTool) Execute(ctx context.Context, params map[string]string)
 		var filtered []storage.Entity
 		for _, e := range entities {
 			if strings.Contains(e.Name, entityName) {
+				filtered = append(filtered, e)
+			}
+		}
+		entities = filtered
+	}
+	if conversationID != "" {
+		var filtered []storage.Entity
+		for _, e := range entities {
+			if e.SourceConversation == conversationID {
 				filtered = append(filtered, e)
 			}
 		}
@@ -96,7 +106,7 @@ func NewForumSearchTool(store *storage.Store) *ForumSearchTool {
 func (t *ForumSearchTool) Name() string { return "forum_search" }
 
 func (t *ForumSearchTool) Description() string {
-	return "搜索辩论记录和会话。参数：conversation_id（对话ID，可选）、status（状态过滤，可选）"
+	return "搜索辩论记录和会话。参数：conversation_id（对话ID，可选）、status（状态过滤，可选）、after（起始时间，可选）、before（结束时间，可选）"
 }
 
 func (t *ForumSearchTool) Execute(ctx context.Context, params map[string]string) (string, error) {
@@ -107,6 +117,8 @@ func (t *ForumSearchTool) Execute(ctx context.Context, params map[string]string)
 
 	convID := params["conversation_id"]
 	status := params["status"]
+	after := params["after"]
+	before := params["before"]
 
 	var filtered []storage.ForumSession
 	for _, s := range sessions {
@@ -116,12 +128,30 @@ func (t *ForumSearchTool) Execute(ctx context.Context, params map[string]string)
 		if status != "" && s.Status != status {
 			continue
 		}
+		if after != "" || before != "" {
+			createdAt, err := ParseFlexibleTime(s.CreatedAt, false)
+			if err != nil {
+				continue
+			}
+			if after != "" {
+				start, err := ParseFlexibleTime(after, false)
+				if err != nil || createdAt.Before(start) {
+					continue
+				}
+			}
+			if before != "" {
+				end, err := ParseFlexibleTime(before, true)
+				if err != nil || createdAt.After(end) {
+					continue
+				}
+			}
+		}
 		filtered = append(filtered, s)
 	}
 
 	// Get messages for each session
 	type sessionDetail struct {
-		Session  storage.ForumSession        `json:"session"`
+		Session  storage.ForumSession         `json:"session"`
 		Messages []storage.ForumMessageRecord `json:"messages"`
 	}
 

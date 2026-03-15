@@ -15,3 +15,8 @@ export interface ActionItem {
   completed_at?: string;
   created_at: string;
 }
+
+export interface ActionPlanResponse {
+  items: ActionItem[];
+  count: number;
+}

@@ -15,10 +15,16 @@ type ReportPeriod struct {
 	End   string `json:"end"`
 }
 
+// ToolScope constrains ReACT tool calls to a single conversation and time range.
+type ToolScope struct {
+	ConversationID string
+	Period         ReportPeriod
+}
+
 // Section represents one section of a report.
 type Section struct {
 	Title     string `json:"title"`
-	Type      string `json:"type"`                // "chart", "list", "text"
+	Type      string `json:"type"`                 // "chart", "list", "text"
 	ChartType string `json:"chart_type,omitempty"` // "line", "network", "heatmap"
 	Data      any    `json:"data,omitempty"`       // ECharts option for chart sections
 	Items     []any  `json:"items,omitempty"`      // for list sections

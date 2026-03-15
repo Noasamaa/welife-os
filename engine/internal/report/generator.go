@@ -45,12 +45,9 @@ func (g *Generator) Generate(ctx context.Context, req GenerateRequest) (string, 
 	}
 
 	// Compute period
-	period := DefaultPeriod(req.Type)
-	if req.PeriodStart != "" {
-		period.Start = req.PeriodStart
-	}
-	if req.PeriodEnd != "" {
-		period.End = req.PeriodEnd
+	period, err := ResolvePeriod(req.Type, req.PeriodStart, req.PeriodEnd)
+	if err != nil {
+		return "", "", err
 	}
 
 	seq := atomic.AddUint64(&reportSeq, 1)
@@ -72,11 +69,11 @@ func (g *Generator) Generate(ctx context.Context, req GenerateRequest) (string, 
 	}
 
 	taskID := g.tasks.Submit("report_generate", func(taskCtx context.Context) error {
-		return g.executeGeneration(taskCtx, reportID, req.Type, period)
+		return g.executeGeneration(taskCtx, reportID, req.ConversationID, req.Type, period)
 	})
 
 	// Update with real task ID
-	if err := g.store.UpdateReport(ctx, reportID, "running", title, "{}"); err != nil {
+	if err := g.store.BindReportTask(ctx, reportID, taskID); err != nil {
 		return "", "", fmt.Errorf("updating report task_id: %w", err)
 	}
 
@@ -98,7 +95,7 @@ func (g *Generator) DeleteReport(ctx context.Context, id string) error {
 	return g.store.DeleteReport(ctx, id)
 }
 
-func (g *Generator) executeGeneration(ctx context.Context, reportID, reportType string, period ReportPeriod) error {
+func (g *Generator) executeGeneration(ctx context.Context, reportID, conversationID, reportType string, period ReportPeriod) error {
 	sectionPlans, err := SectionsForType(reportType)
 	if err != nil {
 		g.failReport(ctx, reportID, err)
@@ -107,9 +104,13 @@ func (g *Generator) executeGeneration(ctx context.Context, reportID, reportType 
 
 	title := TitleForType(reportType, period)
 	var sections []Section
+	scope := ToolScope{
+		ConversationID: conversationID,
+		Period:         period,
+	}
 
 	for _, plan := range sectionPlans {
-		section, err := g.agent.GenerateSection(ctx, plan, period)
+		section, err := g.agent.GenerateSection(ctx, plan, scope)
 		if err != nil {
 			g.failReport(ctx, reportID, err)
 			return err

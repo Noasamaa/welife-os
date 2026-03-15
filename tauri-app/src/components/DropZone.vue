@@ -20,7 +20,7 @@
     />
     <p v-if="!dragging">拖拽聊天记录到此处，或点击选择文件</p>
     <p v-else>松开以上传</p>
-    <p class="hint">支持 WeChat CSV · Telegram JSON · WhatsApp TXT · 通用 CSV</p>
+    <p class="hint">支持 CSV / JSON / TXT / SQLite(chat.db) 等聊天导出文件</p>
   </div>
 </template>
 

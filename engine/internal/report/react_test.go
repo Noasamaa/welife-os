@@ -66,9 +66,23 @@ type mockTool struct {
 	response string
 }
 
-func (m *mockTool) Name() string                                                     { return m.name }
-func (m *mockTool) Description() string                                              { return "test tool" }
-func (m *mockTool) Execute(_ context.Context, _ map[string]string) (string, error) { return m.response, nil }
+func (m *mockTool) Name() string        { return m.name }
+func (m *mockTool) Description() string { return "test tool" }
+func (m *mockTool) Execute(_ context.Context, _ map[string]string) (string, error) {
+	return m.response, nil
+}
+
+type captureTool struct {
+	name   string
+	params map[string]string
+}
+
+func (c *captureTool) Name() string        { return c.name }
+func (c *captureTool) Description() string { return "capture tool" }
+func (c *captureTool) Execute(_ context.Context, params map[string]string) (string, error) {
+	c.params = params
+	return `{"ok":true}`, nil
+}
 
 func TestReactAgentFinishesImmediately(t *testing.T) {
 	// LLM returns a finished response on first iteration
@@ -85,8 +99,12 @@ func TestReactAgentFinishesImmediately(t *testing.T) {
 		Hints: "测试",
 	}
 
-	section, err := agent.GenerateSection(context.Background(), plan, report.ReportPeriod{
-		Start: "2026-03-09", End: "2026-03-15",
+	section, err := agent.GenerateSection(context.Background(), plan, report.ToolScope{
+		ConversationID: "conv_001",
+		Period: report.ReportPeriod{
+			Start: "2026-03-09T00:00:00Z",
+			End:   "2026-03-15T23:59:59Z",
+		},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -132,7 +150,13 @@ func TestReactAgentCallsTool(t *testing.T) {
 
 	section, err := agent.GenerateSection(context.Background(), report.SectionPlan{
 		Title: "工具测试", Type: "text", Hints: "测试",
-	}, report.ReportPeriod{Start: "2026-03-09", End: "2026-03-15"})
+	}, report.ToolScope{
+		ConversationID: "conv_001",
+		Period: report.ReportPeriod{
+			Start: "2026-03-09T00:00:00Z",
+			End:   "2026-03-15T23:59:59Z",
+		},
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -156,8 +180,67 @@ func TestReactAgentContextCancel(t *testing.T) {
 
 	_, err := agent.GenerateSection(ctx, report.SectionPlan{
 		Title: "取消测试", Type: "text", Hints: "测试",
-	}, report.ReportPeriod{Start: "2026-01-01", End: "2026-03-15"})
+	}, report.ToolScope{
+		ConversationID: "conv_001",
+		Period: report.ReportPeriod{
+			Start: "2026-01-01T00:00:00Z",
+			End:   "2026-03-15T23:59:59Z",
+		},
+	})
 	if err == nil {
 		t.Fatal("expected error from cancelled context")
+	}
+}
+
+func TestReactAgentScopesToolCalls(t *testing.T) {
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/generate" {
+			callCount++
+			var resp string
+			if callCount == 1 {
+				resp = `{"thought": "先查消息", "action": "message_search", "params": {"conversation_id": "wrong", "after": "2026-01-01T00:00:00Z"}, "finished": false}`
+			} else {
+				resp = `{"thought": "完成", "action": "finish", "narrative": "完成", "finished": true}`
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"model": "test", "response": resp, "done": true, "created_at": "2024-01-01T00:00:00Z",
+			})
+			return
+		}
+		if r.URL.Path == "/api/tags" {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"models": []any{}})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	client := newTestLLMClient(t, server)
+	tool := &captureTool{name: "message_search"}
+	agent := report.NewReactAgent(client, []report.Tool{tool})
+
+	_, err := agent.GenerateSection(context.Background(), report.SectionPlan{
+		Title: "作用域测试", Type: "text", Hints: "测试",
+	}, report.ToolScope{
+		ConversationID: "conv_scoped",
+		Period: report.ReportPeriod{
+			Start: "2026-03-09T00:00:00Z",
+			End:   "2026-03-15T23:59:59Z",
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tool.params["conversation_id"] != "conv_scoped" {
+		t.Fatalf("expected scoped conversation_id, got %q", tool.params["conversation_id"])
+	}
+	if tool.params["after"] != "2026-03-09T00:00:00Z" {
+		t.Fatalf("expected scoped after, got %q", tool.params["after"])
+	}
+	if tool.params["before"] != "2026-03-15T23:59:59Z" {
+		t.Fatalf("expected scoped before, got %q", tool.params["before"])
 	}
 }

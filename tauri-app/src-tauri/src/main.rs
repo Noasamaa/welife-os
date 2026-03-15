@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::error::Error;
+use std::fs;
 use std::path::PathBuf;
 use std::process::{Child, Command};
 use std::sync::Mutex;
@@ -19,7 +20,6 @@ fn main() {
                 window.set_title("WeLife OS")?;
             }
 
-            #[cfg(debug_assertions)]
             spawn_go_backend(app.handle())?;
 
             Ok(())
@@ -34,7 +34,6 @@ fn main() {
         });
 }
 
-#[cfg(debug_assertions)]
 fn spawn_go_backend(app_handle: &AppHandle) -> Result<(), Box<dyn Error>> {
     let state = app_handle.state::<BackendState>();
     let mut process = state.0.lock().expect("backend state poisoned");
@@ -42,18 +41,21 @@ fn spawn_go_backend(app_handle: &AppHandle) -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
 
-    let child = Command::new(resolve_go_binary())
-        .args(["run", "./cmd/welife"])
-        .current_dir(engine_dir())
+    let backend_data_dir = backend_data_dir(app_handle)?;
+    fs::create_dir_all(&backend_data_dir)?;
+
+    let mut command = backend_command(app_handle)?;
+    command
+        .current_dir(backend_workdir(app_handle)?)
         .env("WELIFE_HOST", "127.0.0.1")
         .env("WELIFE_PORT", "18080")
-        .spawn()?;
+        .env("WELIFE_DB_PATH", backend_data_dir.join("welife.db"));
+    let child = command.spawn()?;
 
     *process = Some(child);
     Ok(())
 }
 
-#[cfg(debug_assertions)]
 fn stop_go_backend(app_handle: &AppHandle) -> Result<(), Box<dyn Error>> {
     let state = app_handle.state::<BackendState>();
     let mut process = state.0.lock().expect("backend state poisoned");
@@ -89,7 +91,38 @@ fn resolve_go_binary() -> String {
     "go".to_string()
 }
 
-#[cfg(not(debug_assertions))]
-fn stop_go_backend(_: &AppHandle) -> Result<(), Box<dyn Error>> {
-    Ok(())
+fn backend_command(app_handle: &AppHandle) -> Result<Command, Box<dyn Error>> {
+    #[cfg(debug_assertions)]
+    {
+        let mut command = Command::new(resolve_go_binary());
+        command.args(["run", "./cmd/welife"]);
+        return Ok(command);
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        let exe_suffix = std::env::consts::EXE_SUFFIX;
+        let binary = app_handle
+            .path()
+            .resource_dir()?
+            .join("bin")
+            .join(format!("welife-engine{}", exe_suffix));
+        Ok(Command::new(binary))
+    }
+}
+
+fn backend_workdir(app_handle: &AppHandle) -> Result<PathBuf, Box<dyn Error>> {
+    #[cfg(debug_assertions)]
+    {
+        return Ok(engine_dir());
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        Ok(backend_data_dir(app_handle)?)
+    }
+}
+
+fn backend_data_dir(app_handle: &AppHandle) -> Result<PathBuf, Box<dyn Error>> {
+    Ok(app_handle.path().app_data_dir()?.join("engine"))
 }

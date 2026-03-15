@@ -11,10 +11,11 @@
     <div class="card">
       <div class="panel-header">
         <h3>人物画像</h3>
-        <button class="btn-secondary" :disabled="building" @click="buildAllProfiles">
+        <button class="btn-secondary" :disabled="building" @click="handleBuildProfiles">
           {{ building ? '构建中...' : '构建画像' }}
         </button>
       </div>
+      <div v-if="profileStatus" class="status-note">{{ profileStatus }}</div>
       <div v-if="profiles.length === 0" class="empty">暂无画像，点击「构建画像」从知识图谱生成。</div>
       <div class="profile-grid">
         <div v-for="p in profiles" :key="p.id" class="profile-card">
@@ -93,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useSimulation } from "../composables/useSimulation";
 import SimulationGraph from "../components/SimulationGraph.vue";
 
@@ -104,14 +105,47 @@ const {
 } = useSimulation();
 
 const forkDescription = ref("");
+const profileStatus = ref("");
+let profilePollHandle: ReturnType<typeof setInterval> | null = null;
+let sessionPollHandle: ReturnType<typeof setInterval> | null = null;
 
 onMounted(async () => {
   await Promise.all([loadProfiles(), loadSessions()]);
 });
 
+onUnmounted(() => {
+  stopProfilePolling();
+  stopSessionPolling();
+});
+
+watch(
+  () => currentSession.value?.session.status,
+  (status) => {
+    stopSessionPolling();
+    if (status !== "running" || !currentSession.value) {
+      return;
+    }
+    sessionPollHandle = setInterval(() => {
+      if (!currentSession.value) {
+        stopSessionPolling();
+        return;
+      }
+      void Promise.all([loadSessions(), loadSession(currentSession.value.session.id)]);
+    }, 2000);
+  },
+);
+
 async function handleRun() {
   if (!forkDescription.value) return;
   await startSimulation(forkDescription.value, [], {});
+}
+
+async function handleBuildProfiles() {
+  const result = await buildAllProfiles();
+  if (!result) return;
+
+  profileStatus.value = "画像构建任务已提交，正在后台刷新...";
+  startProfilePolling();
 }
 
 function statusLabel(s: string): string {
@@ -121,6 +155,35 @@ function statusLabel(s: string): string {
 
 function parseJson(s: string): any {
   try { return JSON.parse(s); } catch { return {}; }
+}
+
+function startProfilePolling() {
+  stopProfilePolling();
+  let attempts = 0;
+  profilePollHandle = setInterval(async () => {
+    attempts += 1;
+    await loadProfiles();
+    if (profiles.value.length > 0 || attempts >= 10) {
+      profileStatus.value = profiles.value.length > 0
+        ? "人物画像已刷新完成。"
+        : "画像仍在后台构建中，可稍后手动刷新。";
+      stopProfilePolling();
+    }
+  }, 2000);
+}
+
+function stopProfilePolling() {
+  if (profilePollHandle !== null) {
+    clearInterval(profilePollHandle);
+    profilePollHandle = null;
+  }
+}
+
+function stopSessionPolling() {
+  if (sessionPollHandle !== null) {
+    clearInterval(sessionPollHandle);
+    sessionPollHandle = null;
+  }
 }
 </script>
 
@@ -133,6 +196,7 @@ function parseJson(s: string): any {
 .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .panel-header h3 { margin: 0; }
 .empty { text-align: center; padding: 16px; color: var(--color-text-secondary, #888); font-size: 14px; }
+.status-note { margin-bottom: 12px; font-size: 13px; color: var(--color-text-secondary, #666); }
 .btn-primary { padding: 8px 20px; background: var(--color-primary, #4a90d9); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-secondary { padding: 6px 14px; background: transparent; border: 1px solid var(--color-border, #ddd); border-radius: 6px; cursor: pointer; font-size: 13px; }

@@ -2,13 +2,17 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -60,6 +64,11 @@ func loadConfig() (server.Config, error) {
 
 	defaultDataDir := filepath.Join(workdir, ".data")
 	defaultDBPath := filepath.Join(defaultDataDir, "welife.db")
+	dbPath := lookupString("WELIFE_DB_PATH", defaultDBPath)
+	dbKey, err := resolveDatabaseKey(dbPath)
+	if err != nil {
+		return server.Config{}, err
+	}
 
 	port, err := lookupInt("WELIFE_PORT", 18080)
 	if err != nil {
@@ -69,11 +78,41 @@ func loadConfig() (server.Config, error) {
 	return server.Config{
 		Host:          lookupString("WELIFE_HOST", "127.0.0.1"),
 		Port:          port,
-		DatabasePath:  lookupString("WELIFE_DB_PATH", defaultDBPath),
-		DatabaseKey:   lookupString("WELIFE_DB_KEY", "welife-phase0-dev-key"),
+		DatabasePath:  dbPath,
+		DatabaseKey:   dbKey,
 		OllamaBaseURL: lookupString("WELIFE_OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
 		OllamaModel:   lookupString("WELIFE_OLLAMA_MODEL", "qwen3.5:9b"),
 	}, nil
+}
+
+func resolveDatabaseKey(databasePath string) (string, error) {
+	if value, ok := os.LookupEnv("WELIFE_DB_KEY"); ok && value != "" {
+		return value, nil
+	}
+
+	keyPath := filepath.Join(filepath.Dir(databasePath), "welife.key")
+	if raw, err := os.ReadFile(keyPath); err == nil {
+		if key := strings.TrimSpace(string(raw)); key != "" {
+			return key, nil
+		}
+		return "", fmt.Errorf("database key file %s is empty", keyPath)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+
+	if err := os.MkdirAll(filepath.Dir(keyPath), 0o700); err != nil {
+		return "", err
+	}
+
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		return "", err
+	}
+	key := hex.EncodeToString(secret)
+	if err := os.WriteFile(keyPath, []byte(key+"\n"), 0o600); err != nil {
+		return "", err
+	}
+	return key, nil
 }
 
 func lookupString(key string, fallback string) string {

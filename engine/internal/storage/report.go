@@ -15,6 +15,14 @@ func (s *Store) CreateReport(ctx context.Context, r Report) error {
 	return err
 }
 
+// BindReportTask stores the concrete task ID once the async report job is queued.
+func (s *Store) BindReportTask(ctx context.Context, id string, taskID string) error {
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE reports SET task_id = ? WHERE id = ?`,
+		taskID, id)
+	return err
+}
+
 // UpdateReport updates the status, title, content, and completed_at of a report.
 func (s *Store) UpdateReport(ctx context.Context, id, status, title, content string) error {
 	if status == "completed" || status == "failed" {

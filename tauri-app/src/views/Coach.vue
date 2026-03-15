@@ -7,6 +7,26 @@
 
     <div v-if="error" class="card error-banner">{{ error }}</div>
 
+    <div class="card generator-panel">
+      <h3>生成行动计划</h3>
+      <div class="generator-form">
+        <select v-model="selectedSession" class="form-select">
+          <option value="">选择已完成的辩论会话...</option>
+          <option
+            v-for="session in completedSessions"
+            :key="session.id"
+            :value="session.id"
+          >
+            {{ session.id.slice(0, 16) }}... · {{ session.created_at?.slice(0, 16) }}
+          </option>
+        </select>
+        <button class="btn-secondary" :disabled="!selectedSession || generating" @click="handleGenerate">
+          {{ generating ? "生成中..." : "生成行动计划" }}
+        </button>
+      </div>
+      <p v-if="generationMessage" class="status-message">{{ generationMessage }}</p>
+    </div>
+
     <!-- Filter bar -->
     <div class="card filter-bar">
       <select v-model="filterStatus" class="form-select" @change="reload">
@@ -45,23 +65,47 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useCoach } from "../composables/useCoach";
 import ActionItemCard from "../components/ActionItemCard.vue";
+import { fetchForumSessions } from "../services/api";
+import type { ForumSession } from "../types/forum";
 
-const { items, loading, error, loadItems, updateStatus } = useCoach();
+const { items, loading, generating, error, loadItems, generate, updateStatus } = useCoach();
 
 const filterStatus = ref("");
 const filterCategory = ref("");
+const selectedSession = ref("");
+const forumSessions = ref<ForumSession[]>([]);
+const generationMessage = ref("");
+const completedSessions = computed(() => forumSessions.value.filter((session) => session.status === "completed"));
 
-onMounted(() => reload());
+onMounted(async () => {
+  await Promise.all([reload(), loadForumSessions()]);
+});
 
 function reload() {
-  void loadItems(filterStatus.value || undefined, filterCategory.value || undefined);
+  return loadItems(filterStatus.value || undefined, filterCategory.value || undefined);
 }
 
 function handleComplete(id: string) { void updateStatus(id, "completed"); }
 function handleDismiss(id: string) { void updateStatus(id, "dismissed"); }
+
+async function loadForumSessions() {
+  try {
+    forumSessions.value = await fetchForumSessions();
+  } catch {
+    forumSessions.value = [];
+  }
+}
+
+async function handleGenerate() {
+  if (!selectedSession.value) return;
+  const result = await generate(selectedSession.value);
+  if (!result) return;
+  generationMessage.value = `已生成 ${result.count} 条行动项。`;
+  await Promise.all([reload(), loadForumSessions()]);
+}
 </script>
 
 <style scoped>
@@ -70,9 +114,12 @@ function handleDismiss(id: string) { void updateStatus(id, "dismissed"); }
 .subtitle { color: var(--color-text-secondary, #666); margin: 4px 0 0; font-size: 14px; }
 .card { background: var(--color-bg-card, #fff); border: 1px solid var(--color-border, #e0e0e0); border-radius: 10px; padding: 20px; }
 .error-banner { background: #fde8e8; border-color: #e74c3c; color: #c0392b; }
+.generator-panel h3 { margin: 0 0 12px; }
+.generator-form { display: flex; gap: 12px; align-items: center; }
 .filter-bar { display: flex; gap: 12px; align-items: center; }
 .form-select { padding: 8px 12px; border: 1px solid var(--color-border, #ddd); border-radius: 6px; font-size: 14px; background: var(--color-bg, #fff); }
 .btn-secondary { padding: 8px 14px; background: transparent; border: 1px solid var(--color-border, #ddd); border-radius: 6px; cursor: pointer; font-size: 13px; }
 .loading, .empty { text-align: center; padding: 24px; color: var(--color-text-secondary, #888); font-size: 14px; }
 .items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.status-message { margin: 12px 0 0; font-size: 13px; color: var(--color-text-secondary, #666); }
 </style>

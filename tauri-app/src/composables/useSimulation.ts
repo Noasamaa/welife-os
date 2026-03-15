@@ -29,14 +29,14 @@ export function useSimulation() {
     }
   }
 
-  async function buildAllProfiles() {
+  async function buildAllProfiles(): Promise<{ task_id: string } | null> {
     building.value = true;
     error.value = null;
     try {
-      await buildProfiles();
-      await loadProfiles();
+      return await buildProfiles();
     } catch (e: any) {
       error.value = e.message ?? "构建画像失败";
+      return null;
     } finally {
       building.value = false;
     }
@@ -76,7 +76,7 @@ export function useSimulation() {
     error.value = null;
     try {
       const result = await runSimulation(forkDescription, affectedNodes, changes, steps);
-      await loadSessions();
+      await Promise.all([loadSessions(), loadSession(result.session_id)]);
       return result;
     } catch (e: any) {
       error.value = e.message ?? "启动模拟失败";

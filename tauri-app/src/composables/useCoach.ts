@@ -30,6 +30,7 @@ export function useCoach() {
     error.value = null;
     try {
       const result = await generateActionPlan(sessionID);
+      items.value = result.items;
       await loadItems();
       return result;
     } catch (e: any) {
