@@ -43,7 +43,7 @@ func (c Config) Addr() string {
 type Server struct {
 	config      Config
 	store       *storage.Store
-	llmClient   llm.LLMClient
+	llmClient   *llm.SwappableClient
 	taskManager *task.Manager
 	importer    *importer.Service
 	graphEngine *graph.Engine
@@ -69,18 +69,23 @@ func New(cfg Config) (*Server, error) {
 		return nil, err
 	}
 
-	llmClient, err := llm.NewClient(llm.Config{
+	// Build initial LLM config from env, then override with DB settings if present.
+	llmCfg := llm.Config{
 		Provider:       cfg.LLMProvider,
 		BaseURL:        cfg.LLMBaseURL,
 		Model:          cfg.LLMModel,
 		EmbeddingModel: cfg.EmbeddingModel,
 		Timeout:        120 * time.Second,
 		APIKey:         cfg.LLMAPIKey,
-	})
+	}
+	llmCfg = overrideLLMConfigFromDB(store, llmCfg)
+
+	rawClient, err := llm.NewClient(llmCfg)
 	if err != nil {
 		_ = store.Close()
 		return nil, err
 	}
+	llmClient := llm.NewSwappable(rawClient)
 
 	server := &Server{
 		config:      cfg,
@@ -190,4 +195,63 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		s.shutdownErr = errors.Join(errs...)
 	})
 	return s.shutdownErr
+}
+
+// llmSettingKeys are the DB keys used for LLM configuration.
+var llmSettingKeys = []string{
+	"llm_provider", "llm_base_url", "llm_model", "llm_api_key", "llm_embedding_model",
+}
+
+// overrideLLMConfigFromDB reads saved LLM settings from the database and
+// overrides the corresponding fields in the given config. Missing keys are
+// left unchanged.
+func overrideLLMConfigFromDB(store *storage.Store, base llm.Config) llm.Config {
+	ctx := context.Background()
+	settings, err := store.GetSettings(ctx, llmSettingKeys)
+	if err != nil {
+		log.Printf("llm-config: failed to load DB settings: %v", err)
+		return base
+	}
+	if len(settings) == 0 {
+		return base
+	}
+	if v, ok := settings["llm_provider"]; ok {
+		base.Provider = v
+	}
+	if v, ok := settings["llm_base_url"]; ok {
+		base.BaseURL = v
+	}
+	if v, ok := settings["llm_model"]; ok {
+		base.Model = v
+	}
+	if v, ok := settings["llm_api_key"]; ok {
+		base.APIKey = v
+	}
+	if v, ok := settings["llm_embedding_model"]; ok {
+		base.EmbeddingModel = v
+	}
+	return base
+}
+
+// swapLLMClient rebuilds the LLM client from DB settings (falling back to
+// the original env config) and hot-swaps it into the running server.
+func (s *Server) swapLLMClient(ctx context.Context) error {
+	base := llm.Config{
+		Provider:       s.config.LLMProvider,
+		BaseURL:        s.config.LLMBaseURL,
+		Model:          s.config.LLMModel,
+		EmbeddingModel: s.config.EmbeddingModel,
+		Timeout:        120 * time.Second,
+		APIKey:         s.config.LLMAPIKey,
+	}
+	cfg := overrideLLMConfigFromDB(s.store, base)
+
+	newClient, err := llm.NewClient(cfg)
+	if err != nil {
+		return fmt.Errorf("swap LLM client: %w", err)
+	}
+
+	s.llmClient.Swap(newClient)
+	log.Printf("llm-config: swapped to provider=%s url=%s model=%s", cfg.Provider, cfg.BaseURL, cfg.Model)
+	return nil
 }

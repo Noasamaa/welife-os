@@ -42,6 +42,8 @@ func (s *Server) routes() http.Handler {
 	router.Use(devCORSMiddleware)
 	router.Get("/health", s.handleHealth)
 	router.Get("/api/v1/system/status", s.handleSystemStatus)
+	router.Get("/api/v1/system/llm-config", s.handleGetLLMConfig)
+	router.Patch("/api/v1/system/llm-config", s.handleUpdateLLMConfig)
 
 	// Import endpoints
 	router.Post("/api/v1/import", s.handleImportUpload)
