@@ -2,8 +2,8 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
+	"strings"
 )
 
 // GetSetting retrieves a single setting value by key.
@@ -38,19 +38,38 @@ func (s *Store) DeleteSetting(ctx context.Context, key string) error {
 	return nil
 }
 
-// GetSettings retrieves multiple settings by keys. Missing keys are omitted.
+// GetSettings retrieves multiple settings by keys in a single query.
+// Missing keys are omitted from the result.
 func (s *Store) GetSettings(ctx context.Context, keys []string) (map[string]string, error) {
+	if len(keys) == 0 {
+		return map[string]string{}, nil
+	}
+
+	// Build "SELECT key, value FROM system_settings WHERE key IN (?, ?, ...)"
+	placeholders := make([]string, len(keys))
+	args := make([]interface{}, len(keys))
+	for i, k := range keys {
+		placeholders[i] = "?"
+		args[i] = k
+	}
+	query := "SELECT key, value FROM system_settings WHERE key IN (" + strings.Join(placeholders, ", ") + ")"
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("get settings: %w", err)
+	}
+	defer rows.Close()
+
 	result := make(map[string]string, len(keys))
-	for _, key := range keys {
-		var value string
-		err := s.db.QueryRowContext(ctx, "SELECT value FROM system_settings WHERE key = ?", key).Scan(&value)
-		if err == sql.ErrNoRows {
-			continue
+	for rows.Next() {
+		var k, v string
+		if err := rows.Scan(&k, &v); err != nil {
+			return nil, fmt.Errorf("get settings scan: %w", err)
 		}
-		if err != nil {
-			return nil, fmt.Errorf("get setting %q: %w", key, err)
-		}
-		result[key] = value
+		result[k] = v
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("get settings rows: %w", err)
 	}
 	return result, nil
 }

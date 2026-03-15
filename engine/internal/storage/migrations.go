@@ -310,6 +310,7 @@ func migrate(ctx context.Context, db *sql.DB) error {
 				return fmt.Errorf("migrating v6 to v7: %w", err)
 			}
 		}
+		version = 7
 	}
 
 	return nil
