@@ -1,5 +1,7 @@
 package storage
 
+import "time"
+
 var schemaStatements = []string{
 	`
 CREATE TABLE IF NOT EXISTS schema_state (
@@ -21,4 +23,71 @@ CREATE TABLE IF NOT EXISTS imported_conversations (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 `,
+}
+
+// Conversation represents an imported chat conversation.
+type Conversation struct {
+	ID               string    `json:"id"`
+	Platform         string    `json:"platform"`
+	ConversationType string    `json:"conversation_type"`
+	Title            string    `json:"title,omitempty"`
+	MessageCount     int       `json:"message_count"`
+	FirstMessageAt   string    `json:"first_message_at,omitempty"`
+	LastMessageAt    string    `json:"last_message_at,omitempty"`
+	ImportedAt       time.Time `json:"imported_at"`
+}
+
+// StoredMessage is the storage-layer representation of a chat message.
+type StoredMessage struct {
+	ID             string `json:"id"`
+	ConversationID string `json:"conversation_id"`
+	Platform       string `json:"platform"`
+	SenderID       string `json:"sender_id"`
+	SenderName     string `json:"sender_name"`
+	Content        string `json:"content"`
+	MessageType    string `json:"message_type"`
+	ReplyTo        string `json:"reply_to,omitempty"`
+	Timestamp      string `json:"timestamp"`
+}
+
+// StoredParticipant is the storage-layer representation of a conversation participant.
+type StoredParticipant struct {
+	ConversationID string `json:"conversation_id"`
+	ParticipantID  string `json:"participant_id"`
+	DisplayName    string `json:"display_name"`
+	IsSelf         bool   `json:"is_self"`
+}
+
+// ImportJob tracks the status of a file import operation.
+type ImportJob struct {
+	ID             string `json:"id"`
+	TaskID         string `json:"task_id"`
+	FileName       string `json:"file_name"`
+	Format         string `json:"format"`
+	Status         string `json:"status"`
+	ConversationID string `json:"conversation_id,omitempty"`
+	MessageCount   int    `json:"message_count"`
+	ErrorMessage   string `json:"error_message,omitempty"`
+	StartedAt      string `json:"started_at"`
+	CompletedAt    string `json:"completed_at,omitempty"`
+}
+
+// Entity represents a knowledge graph entity.
+type Entity struct {
+	ID                 string `json:"id"`
+	Type               string `json:"type"`
+	Name               string `json:"name"`
+	Properties         string `json:"properties,omitempty"`
+	SourceConversation string `json:"source_conversation,omitempty"`
+}
+
+// Relationship represents a knowledge graph edge.
+type Relationship struct {
+	ID              string  `json:"id"`
+	SourceEntityID  string  `json:"source_entity_id"`
+	TargetEntityID  string  `json:"target_entity_id"`
+	Type            string  `json:"type"`
+	Properties      string  `json:"properties,omitempty"`
+	Weight          float64 `json:"weight"`
+	SourceMessageID string  `json:"source_message_id,omitempty"`
 }

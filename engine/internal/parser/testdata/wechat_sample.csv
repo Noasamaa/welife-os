@@ -1,0 +1,11 @@
+talker,create_time,type,content,isSend
+wxid_alice,1700000000,1,你好啊，最近怎么样？,0
+wxid_self,1700000060,1,挺好的，周末去爬山了,1
+wxid_alice,1700000120,1,真不错！我也想去,0
+wxid_alice,1700000180,3,[图片],0
+wxid_self,1700000240,1,下次一起去吧,1
+wxid_bob,1700000300,1,大家好,0
+wxid_self,1700000360,1,Bob你好！,1
+wxid_alice,1700000420,34,[语音],0
+wxid_self,1700000480,43,[视频],1
+wxid_alice,1700000540,10000,alice 邀请 bob 加入了群聊,0

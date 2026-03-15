@@ -65,7 +65,15 @@ func (s *Store) initialize(ctx context.Context) error {
 			return err
 		}
 	}
+	if err := migrate(ctx, s.db); err != nil {
+		return err
+	}
 	return s.Probe(ctx)
+}
+
+// DB returns the underlying *sql.DB for use by repository methods.
+func (s *Store) DB() *sql.DB {
+	return s.db
 }
 
 func (s *Store) Probe(ctx context.Context) error {
