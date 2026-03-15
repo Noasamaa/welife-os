@@ -25,7 +25,7 @@ export function useUpdater() {
     try {
       const { check } = await import("@tauri-apps/plugin-updater");
       const update = await check();
-      if (update) {
+      if (update && update.version) {
         updateAvailable.value = true;
         updateVersion.value = update.version;
         cachedUpdate = update;
