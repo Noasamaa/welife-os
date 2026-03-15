@@ -4,7 +4,8 @@
   "description": "Default capability set for WeLife desktop shell",
   "windows": ["main"],
   "permissions": [
-    "core:default"
+    "core:default",
+    "notification:default",
+    "updater:default"
   ]
 }
-

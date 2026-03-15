@@ -9,6 +9,8 @@ import {
   updateReminderRule,
   deleteReminderRule,
 } from "../services/api";
+import { setTrayBadge } from "../services/tauri";
+import { useNativeNotification } from "./useNativeNotification";
 
 export function useReminder() {
   const pending = ref<Reminder[]>([]);
@@ -17,9 +19,13 @@ export function useReminder() {
   const error = ref<string | null>(null);
   let pollHandle: ReturnType<typeof setInterval> | null = null;
 
+  const { notifyNewReminders } = useNativeNotification();
+
   async function loadPending() {
     try {
       pending.value = await fetchPendingReminders();
+      void setTrayBadge(pending.value.length);
+      void notifyNewReminders(pending.value);
     } catch (e: any) {
       error.value = e.message ?? "加载提醒失败";
     }

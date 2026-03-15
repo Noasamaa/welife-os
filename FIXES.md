@@ -50,4 +50,4 @@
 3. ~~API handler 测试（7 个 handler 34 个函数无测试）~~ ✅ 48 个 handler 测试，覆盖率 68.3%
 4. ~~Graph 持久化（纯内存，重启丢失）~~ ✅ Load() 启动时从 SQLite 重建
 5. ~~sqlite-vec 向量搜索集成（仅 NoopVectorStore）~~ ✅ CGO 集成 + SqliteVecStore + Embed API
-6. Tauri 原生功能（系统托盘 / 通知 / 自动更新）
+6. ~~Tauri 原生功能（系统托盘 / 通知 / 自动更新）~~ ✅ 系统托盘 + 关闭到托盘 + 原生通知 + 自动更新 UI

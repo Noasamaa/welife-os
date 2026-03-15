@@ -116,6 +116,40 @@
           </div>
         </div>
       </div>
+
+      <!-- Section 5: 更新 -->
+      <div class="card">
+        <h3>应用更新</h3>
+        <div class="info-list">
+          <div class="info-row">
+            <span class="info-label">当前版本</span>
+            <span class="info-value">v1.0.0</span>
+          </div>
+          <div v-if="updater.updateAvailable.value" class="info-row">
+            <span class="info-label">最新版本</span>
+            <span class="info-value">v{{ updater.updateVersion.value }}</span>
+          </div>
+        </div>
+        <button
+          v-if="!updater.updateAvailable.value"
+          class="btn-primary test-btn"
+          :disabled="updater.checking.value"
+          @click="updater.checkForUpdate()"
+        >
+          {{ updater.checking.value ? "检查中..." : "检查更新" }}
+        </button>
+        <button
+          v-else
+          class="btn-primary test-btn"
+          :disabled="updater.downloading.value"
+          @click="updater.downloadAndInstall()"
+        >
+          {{ updater.downloading.value ? "下载中..." : "下载并安装" }}
+        </button>
+        <div v-if="updater.error.value" class="test-result result-err">
+          {{ updater.error.value }}
+        </div>
+      </div>
     </div>
   </section>
 </template>
@@ -124,6 +158,7 @@
 import { ref, computed, onMounted } from "vue";
 
 import { useBackendHealth } from "../composables/useBackendHealth";
+import { useUpdater } from "../composables/useUpdater";
 import { fetchSystemStatus } from "../services/api";
 
 type ThemeValue = "light" | "dark" | "system";
@@ -134,6 +169,7 @@ interface TestResult {
 }
 
 const { systemStatus } = useBackendHealth();
+const updater = useUpdater();
 
 const testing = ref(false);
 const testResult = ref<TestResult | null>(null);

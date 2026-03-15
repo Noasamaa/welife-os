@@ -4,11 +4,28 @@ import { mockAllApi } from "../../test-utils/mock-api";
 import type { Reminder, ReminderRule } from "../../types/reminder";
 import { withSetup } from "../../test-utils/with-setup";
 
+const mockSetTrayBadge = vi.fn();
+const mockNotifyNewReminders = vi.fn();
+
+vi.mock("../../services/tauri", () => ({
+  isTauriRuntime: () => false,
+  setTrayBadge: (...args: unknown[]) => mockSetTrayBadge(...args),
+}));
+
+vi.mock("../useNativeNotification", () => ({
+  useNativeNotification: () => ({
+    notifyNewReminders: (...args: unknown[]) => mockNotifyNewReminders(...args),
+    resetNotified: vi.fn(),
+  }),
+}));
+
 describe("useReminder", () => {
   let mocks: ReturnType<typeof mockAllApi>;
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockSetTrayBadge.mockClear();
+    mockNotifyNewReminders.mockClear();
     mocks = mockAllApi();
   });
 
@@ -148,5 +165,30 @@ describe("useReminder", () => {
     expect(mocks.fetchPendingReminders).toHaveBeenCalledTimes(1);
 
     vi.useRealTimers();
+  });
+
+  it("loadPending calls setTrayBadge with pending count", async () => {
+    const fakeReminders: Reminder[] = [
+      { id: "r1", rule_id: "rule1", message: "Test", status: "pending", triggered_at: "2026-01-01", read_at: undefined },
+      { id: "r2", rule_id: "rule1", message: "Test 2", status: "pending", triggered_at: "2026-01-01", read_at: undefined },
+    ];
+    mocks.fetchPendingReminders.mockResolvedValue(fakeReminders);
+
+    const { result } = setup();
+    await result.loadPending();
+
+    expect(mockSetTrayBadge).toHaveBeenCalledWith(2);
+  });
+
+  it("loadPending calls notifyNewReminders with pending list", async () => {
+    const fakeReminders: Reminder[] = [
+      { id: "r1", rule_id: "rule1", message: "Test", status: "pending", triggered_at: "2026-01-01", read_at: undefined },
+    ];
+    mocks.fetchPendingReminders.mockResolvedValue(fakeReminders);
+
+    const { result } = setup();
+    await result.loadPending();
+
+    expect(mockNotifyNewReminders).toHaveBeenCalledWith(fakeReminders);
   });
 });
