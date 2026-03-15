@@ -21,10 +21,10 @@
             <span class="confidence">置信度: {{ (msg.confidence * 100).toFixed(0) }}%</span>
           </div>
           <div class="message-content">{{ msg.content }}</div>
-          <div v-if="parsedEvidence(msg.evidence).length > 0" class="evidence">
+          <div v-if="normalizedEvidence(msg.evidence).length > 0" class="evidence">
             <span class="evidence-label">证据:</span>
             <span
-              v-for="(ev, i) in parsedEvidence(msg.evidence)"
+              v-for="(ev, i) in normalizedEvidence(msg.evidence)"
               :key="i"
               class="evidence-tag"
             >{{ ev }}</span>
@@ -70,12 +70,44 @@ function stanceClass(stance: string): string {
   return "stance-debate";
 }
 
-function parsedEvidence(evidence?: string): string[] {
+function stringifyEvidenceItem(item: unknown): string | null {
+  if (typeof item === "string") {
+    return item;
+  }
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+
+  const record = item as Record<string, unknown>;
+  const title = typeof record.title === "string" ? record.title : "";
+  const content = typeof record.content === "string" ? record.content : "";
+  const note = typeof record.note === "string" ? record.note : "";
+
+  if (title && content) {
+    return `${title}: ${content}`;
+  }
+  if (title) {
+    return title;
+  }
+  if (content) {
+    return content;
+  }
+  if (note) {
+    return note;
+  }
+  return null;
+}
+
+function normalizedEvidence(evidence?: string): string[] {
   if (!evidence) return [];
   try {
     const parsed = JSON.parse(evidence);
-    if (Array.isArray(parsed)) return parsed;
-    return [];
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed
+      .map((item) => stringifyEvidenceItem(item))
+      .filter((item): item is string => Boolean(item));
   } catch {
     return [];
   }

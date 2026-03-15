@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -249,5 +250,142 @@ func TestListSessions(t *testing.T) {
 	}
 	if len(sessions) != 1 {
 		t.Fatalf("expected 1 session, got %d", len(sessions))
+	}
+}
+
+func newEmptyTopicsOllamaServer(t *testing.T) *httptest.Server {
+	t.Helper()
+
+	genericResp := `{
+		"emotion_timeline": [],
+		"emotion_shifts": [],
+		"relationship_temperature": 50,
+		"summary": "测试分析",
+		"opportunities": [],
+		"missed_followups": [],
+		"cross_links": [],
+		"perspective": "realist",
+		"risk_items": [],
+		"overall_assessment": "测试评估",
+		"consensus_risks": [],
+		"divergences": [],
+		"stance": "测试立场",
+		"content": "测试论点",
+		"evidence": [],
+		"confidence": 0.8
+	}`
+
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/generate" {
+			var req struct {
+				Prompt string `json:"prompt"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				t.Fatalf("decode generate request: %v", err)
+			}
+
+			response := genericResp
+			switch {
+			case strings.Contains(req.Prompt, "提取 2-3 个值得深入辩论的核心议题"):
+				response = `{"topics": []}`
+			case strings.Contains(req.Prompt, "辩论已经结束"):
+				response = `{"summary": "空议题回退摘要"}`
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"model":      "test",
+				"response":   response,
+				"done":       true,
+				"created_at": "2024-01-01T00:00:00Z",
+			})
+			return
+		}
+		if r.URL.Path == "/api/tags" {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"models": []any{}})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+}
+
+func TestRunDebateFallsBackWhenModeratorReturnsNoTopics(t *testing.T) {
+	ollamaServer := newEmptyTopicsOllamaServer(t)
+	defer ollamaServer.Close()
+
+	llmClient, err := llm.New(llm.Config{
+		BaseURL: ollamaServer.URL,
+		Model:   "test",
+	})
+	if err != nil {
+		t.Fatalf("create LLM client: %v", err)
+	}
+
+	store, err := storage.Open(context.Background(), storage.Config{
+		Path: t.TempDir() + "/forum_engine_empty_topics.db",
+		Key:  "test-key",
+	})
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer func() { _ = store.Close() }()
+
+	if err := store.SaveConversation(context.Background(), storage.Conversation{
+		ID:               "conv_empty_topics",
+		Platform:         "test",
+		ConversationType: "private",
+		Title:            "测试对话",
+		MessageCount:     2,
+	}); err != nil {
+		t.Fatalf("save conversation: %v", err)
+	}
+	if err := store.SaveMessages(context.Background(), []storage.StoredMessage{
+		{ID: "m1", ConversationID: "conv_empty_topics", Platform: "test", SenderID: "u1", SenderName: "Alice", Content: "你好", MessageType: "text", Timestamp: "2024-01-01T10:00:00Z"},
+		{ID: "m2", ConversationID: "conv_empty_topics", Platform: "test", SenderID: "u2", SenderName: "Bob", Content: "你好啊", MessageType: "text", Timestamp: "2024-01-01T10:01:00Z"},
+	}); err != nil {
+		t.Fatalf("save messages: %v", err)
+	}
+
+	taskMgr := task.NewManager(2)
+	defer func() { _ = taskMgr.Close() }()
+
+	engine := forum.NewEngine([]agent.Agent{
+		agent.NewEmotionAgent(llmClient),
+		agent.NewOpportunityAgent(llmClient),
+		agent.NewRiskAgent(llmClient),
+	}, forum.NewModerator(llmClient), store, taskMgr)
+
+	sessionID, taskID, err := engine.RunDebate(context.Background(), "conv_empty_topics")
+	if err != nil {
+		t.Fatalf("run debate: %v", err)
+	}
+
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		info, ok := taskMgr.Status(taskID)
+		if ok && (info.Status == task.StatusSucceeded || info.Status == task.StatusFailed) {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	info, ok := taskMgr.Status(taskID)
+	if !ok {
+		t.Fatal("task not found")
+	}
+	if info.Status != task.StatusSucceeded {
+		t.Fatalf("expected succeeded, got %s (%s)", info.Status, info.Error)
+	}
+
+	session, err := store.GetSession(context.Background(), sessionID)
+	if err != nil {
+		t.Fatalf("get session: %v", err)
+	}
+	if session.Status != "completed" {
+		t.Fatalf("expected completed, got %s", session.Status)
+	}
+	if session.Summary == "" {
+		t.Fatal("expected summary to be populated")
 	}
 }

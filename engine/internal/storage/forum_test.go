@@ -79,6 +79,9 @@ func TestUpdateSession(t *testing.T) {
 	if got.Summary != "test summary" {
 		t.Fatalf("expected 'test summary', got %s", got.Summary)
 	}
+	if got.TaskID != "task_002" {
+		t.Fatalf("expected task_002 to be preserved, got %s", got.TaskID)
+	}
 	if got.CompletedAt == "" {
 		t.Fatal("expected completed_at to be set")
 	}

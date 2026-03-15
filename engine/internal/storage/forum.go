@@ -20,13 +20,15 @@ func (s *Store) UpdateSession(ctx context.Context, id, status, taskID, summary s
 	if status == "completed" || status == "failed" {
 		_, err := s.db.ExecContext(ctx, `
 			UPDATE forum_sessions
-			SET status = ?, task_id = ?, summary = ?, completed_at = CURRENT_TIMESTAMP
+			SET status = ?, task_id = COALESCE(NULLIF(?, ''), task_id), summary = ?, completed_at = CURRENT_TIMESTAMP
 			WHERE id = ?`, status, taskID, summary, id)
 		return err
 	}
 
 	_, err := s.db.ExecContext(ctx, `
-		UPDATE forum_sessions SET status = ?, task_id = ?, summary = ? WHERE id = ?`,
+		UPDATE forum_sessions
+		SET status = ?, task_id = COALESCE(NULLIF(?, ''), task_id), summary = ?
+		WHERE id = ?`,
 		status, taskID, summary, id)
 	return err
 }
