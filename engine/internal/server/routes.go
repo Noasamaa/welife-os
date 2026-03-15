@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -38,6 +39,7 @@ type llmStatus struct {
 
 func (s *Server) routes() http.Handler {
 	router := chi.NewRouter()
+	router.Use(devCORSMiddleware)
 	router.Get("/health", s.handleHealth)
 	router.Get("/api/v1/system/status", s.handleSystemStatus)
 
@@ -92,6 +94,33 @@ func (s *Server) routes() http.Handler {
 	router.Get("/api/v1/simulation/sessions/{id}", s.handleGetSimulation)
 
 	return router
+}
+
+var allowedOrigins = map[string]struct{}{
+	"http://localhost:1420":   {},
+	"http://127.0.0.1:1420":   {},
+	"tauri://localhost":       {},
+	"http://tauri.localhost":  {},
+	"https://tauri.localhost": {},
+}
+
+func devCORSMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := strings.TrimSpace(r.Header.Get("Origin"))
+		if _, ok := allowedOrigins[origin]; ok {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		}
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {

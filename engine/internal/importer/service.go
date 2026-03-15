@@ -77,7 +77,7 @@ func (s *Service) Import(ctx context.Context, req ImportRequest) (ImportResult, 
 	// Create import job record
 	if err := s.store.CreateImportJob(ctx, storage.ImportJob{
 		ID:       jobID,
-		TaskID:   "", // will be updated after submit
+		TaskID:   "pending",
 		FileName: req.FileName,
 		Format:   string(p.Format()),
 		Status:   "pending",
@@ -94,7 +94,7 @@ func (s *Service) Import(ctx context.Context, req ImportRequest) (ImportResult, 
 	})
 
 	// Update job with task ID
-	_ = s.store.UpdateImportJob(ctx, jobID, "running", "", 0, "")
+	_ = s.store.BindImportJobTask(ctx, jobID, taskID)
 
 	return ImportResult{
 		JobID:  jobID,
@@ -111,7 +111,6 @@ func (s *Service) runImport(ctx context.Context, jobID string, data []byte, p pa
 		return fmt.Errorf("parsing: %w", err)
 	}
 
-	// Store conversation
 	conv := storage.Conversation{
 		ID:               ir.ConversationID,
 		Platform:         ir.Platform,
@@ -122,23 +121,11 @@ func (s *Service) runImport(ctx context.Context, jobID string, data []byte, p pa
 		conv.FirstMessageAt = ir.Messages[0].Timestamp.Format(time.RFC3339)
 		conv.LastMessageAt = ir.Messages[len(ir.Messages)-1].Timestamp.Format(time.RFC3339)
 	}
-	if err := s.store.SaveConversation(ctx, conv); err != nil {
-		_ = s.store.UpdateImportJob(ctx, jobID, "failed", "", 0, err.Error())
-		return fmt.Errorf("saving conversation: %w", err)
-	}
-
-	// Store messages
 	msgs := chatIRToStoredMessages(ir)
-	if err := s.store.SaveMessages(ctx, msgs); err != nil {
-		_ = s.store.UpdateImportJob(ctx, jobID, "failed", ir.ConversationID, 0, err.Error())
-		return fmt.Errorf("saving messages: %w", err)
-	}
-
-	// Store participants
 	parts := chatIRToStoredParticipants(ir)
-	if err := s.store.SaveParticipants(ctx, parts); err != nil {
+	if err := s.store.SaveConversationBundle(ctx, conv, msgs, parts); err != nil {
 		_ = s.store.UpdateImportJob(ctx, jobID, "failed", ir.ConversationID, len(msgs), err.Error())
-		return fmt.Errorf("saving participants: %w", err)
+		return fmt.Errorf("saving import bundle: %w", err)
 	}
 
 	// Mark success

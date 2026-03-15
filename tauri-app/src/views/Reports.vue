@@ -105,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useReport } from "../composables/useReport";
 import { fetchConversations, reportHTMLUrl, reportPDFUrl } from "../services/api";
 import type { Conversation } from "../types/import";
@@ -128,6 +128,7 @@ const {
 const conversations = ref<Conversation[]>([]);
 const selectedConversation = ref("");
 const selectedType = ref<ReportType>("weekly");
+let pollHandle: ReturnType<typeof setInterval> | null = null;
 
 const reportTypes = [
   { value: "weekly" as ReportType, label: "每周简报" },
@@ -139,6 +140,27 @@ onMounted(async () => {
   await Promise.all([loadReports(), loadConversations()]);
 });
 
+onUnmounted(() => {
+  stopPolling();
+});
+
+watch(
+  () => currentReport.value?.status,
+  (status) => {
+    stopPolling();
+    if (status !== "running" || !currentReport.value) {
+      return;
+    }
+    pollHandle = setInterval(() => {
+      if (!currentReport.value) {
+        stopPolling();
+        return;
+      }
+      void Promise.all([loadReports(), loadReport(currentReport.value.id)]);
+    }, 2000);
+  },
+);
+
 async function loadConversations() {
   try {
     conversations.value = await fetchConversations();
@@ -149,7 +171,10 @@ async function loadConversations() {
 
 async function handleGenerate() {
   if (!selectedConversation.value) return;
-  await generate(selectedType.value, selectedConversation.value);
+  const result = await generate(selectedType.value, selectedConversation.value);
+  if (result) {
+    await loadReport(result.report_id);
+  }
 }
 
 async function handleSelect(id: string) {
@@ -179,6 +204,13 @@ function typeLabel(type: string): string {
 function statusLabel(status: string): string {
   const m: Record<string, string> = { running: "生成中", completed: "已完成", failed: "失败" };
   return m[status] ?? status;
+}
+
+function stopPolling() {
+  if (pollHandle !== null) {
+    clearInterval(pollHandle);
+    pollHandle = null;
+  }
 }
 </script>
 

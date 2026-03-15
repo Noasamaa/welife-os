@@ -2,9 +2,10 @@
   <div class="import-page">
     <section class="card block">
       <h2>导入聊天记录</h2>
-      <DropZone accept=".csv,.json,.txt" @file="onFile" />
+      <DropZone accept=".csv,.json,.txt,.db,.sqlite,.sqlite3" @file="onFile" />
       <p v-if="importState.uploading.value" class="status-msg">上传中...</p>
       <p v-if="importState.error.value" class="status-msg error">{{ importState.error.value }}</p>
+      <p v-if="graphStatus" class="status-msg">{{ graphStatus }}</p>
     </section>
 
     <section class="card block">
@@ -34,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import DropZone from "../components/DropZone.vue";
 import ImportJobList from "../components/ImportJobList.vue";
 import GraphView from "../components/GraphView.vue";
@@ -46,6 +47,8 @@ import type { Conversation } from "../types/import";
 const importState = useImport();
 const graphState = useGraph();
 const conversations = ref<Conversation[]>([]);
+const graphStatus = ref("");
+let graphPollHandle: ReturnType<typeof setInterval> | null = null;
 
 async function onFile(file: File) {
   await importState.upload(file);
@@ -54,9 +57,10 @@ async function onFile(file: File) {
 
 async function onBuildGraph() {
   if (conversations.value.length === 0) return;
-  // Build graph for the most recent conversation
-  await graphState.buildGraph(conversations.value[0].id);
-  await graphState.loadOverview();
+  const result = await graphState.buildGraph(conversations.value[0].id);
+  if (!result) return;
+  graphStatus.value = "图谱构建任务已提交，正在后台刷新结果...";
+  startGraphPolling();
 }
 
 async function loadConversations() {
@@ -72,6 +76,30 @@ onMounted(async () => {
   await loadConversations();
   await graphState.loadOverview();
 });
+
+onUnmounted(() => {
+  stopGraphPolling();
+});
+
+function startGraphPolling() {
+  stopGraphPolling();
+  let attempts = 0;
+  graphPollHandle = setInterval(async () => {
+    attempts += 1;
+    await graphState.loadOverview();
+    if (attempts >= 10) {
+      graphStatus.value = "图谱仍在后台构建中，可稍后手动刷新。";
+      stopGraphPolling();
+    }
+  }, 2000);
+}
+
+function stopGraphPolling() {
+  if (graphPollHandle !== null) {
+    clearInterval(graphPollHandle);
+    graphPollHandle = null;
+  }
+}
 </script>
 
 <style scoped>

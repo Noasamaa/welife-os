@@ -83,6 +83,9 @@ func TestGenerateCreatesReport(t *testing.T) {
 	if rpt.Type != "weekly" {
 		t.Fatalf("expected weekly, got %s", rpt.Type)
 	}
+	if rpt.TaskID != taskID {
+		t.Fatalf("expected persisted task_id %q, got %q", taskID, rpt.TaskID)
+	}
 }
 
 func TestGenerateInvalidType(t *testing.T) {
@@ -95,6 +98,32 @@ func TestGenerateInvalidType(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected error for invalid type")
+	}
+}
+
+func TestGenerateNormalizesCustomPeriod(t *testing.T) {
+	gen, store, _ := setupTestGenerator(t)
+	ctx := context.Background()
+
+	reportID, _, err := gen.Generate(ctx, report.GenerateRequest{
+		Type:           "weekly",
+		ConversationID: "conv_gen",
+		PeriodStart:    "2026-03-01",
+		PeriodEnd:      "2026-03-03",
+	})
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+
+	rpt, err := store.GetReport(ctx, reportID)
+	if err != nil {
+		t.Fatalf("get report: %v", err)
+	}
+	if rpt.PeriodStart != "2026-03-01T00:00:00Z" {
+		t.Fatalf("unexpected normalized start: %s", rpt.PeriodStart)
+	}
+	if rpt.PeriodEnd != "2026-03-03T23:59:59Z" {
+		t.Fatalf("unexpected normalized end: %s", rpt.PeriodEnd)
 	}
 }
 

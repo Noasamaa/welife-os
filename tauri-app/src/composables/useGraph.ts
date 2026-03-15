@@ -20,13 +20,14 @@ export function useGraph() {
     }
   }
 
-  async function buildGraph(conversationID: string) {
+  async function buildGraph(conversationID: string): Promise<{ task_id: string } | null> {
     building.value = true;
     error.value = null;
     try {
-      await triggerGraphBuild(conversationID);
+      return await triggerGraphBuild(conversationID);
     } catch (e: any) {
       error.value = e.message ?? "构建图谱失败";
+      return null;
     } finally {
       building.value = false;
     }

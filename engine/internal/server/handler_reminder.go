@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/welife-os/welife-os/engine/internal/reminder"
 	"github.com/welife-os/welife-os/engine/internal/storage"
 )
 
@@ -91,6 +92,10 @@ func (s *Server) handleCreateReminderRule(w http.ResponseWriter, r *http.Request
 		CronExpr:        req.CronExpr,
 		MessageTemplate: req.MessageTemplate,
 		Enabled:         true,
+	}
+	if err := reminder.ValidateRule(rule); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
 	}
 
 	if err := s.store.CreateReminderRule(r.Context(), rule); err != nil {

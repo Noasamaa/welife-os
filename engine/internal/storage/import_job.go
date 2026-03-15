@@ -15,6 +15,14 @@ func (s *Store) CreateImportJob(ctx context.Context, job ImportJob) error {
 	return err
 }
 
+// BindImportJobTask stores the concrete task ID once the async job is queued.
+func (s *Store) BindImportJobTask(ctx context.Context, id string, taskID string) error {
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE import_jobs SET task_id = ?, status = ? WHERE id = ?`,
+		taskID, "running", id)
+	return err
+}
+
 // UpdateImportJob updates mutable fields of an import job.
 func (s *Store) UpdateImportJob(ctx context.Context, id string, status string, convID string, msgCount int, errMsg string) error {
 	if status == "succeeded" || status == "failed" {
