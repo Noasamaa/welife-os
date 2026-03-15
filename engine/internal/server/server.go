@@ -14,6 +14,7 @@ import (
 	"github.com/welife-os/welife-os/engine/internal/importer"
 	"github.com/welife-os/welife-os/engine/internal/llm"
 	"github.com/welife-os/welife-os/engine/internal/parser"
+	"github.com/welife-os/welife-os/engine/internal/report"
 	"github.com/welife-os/welife-os/engine/internal/storage"
 	"github.com/welife-os/welife-os/engine/internal/task"
 )
@@ -41,6 +42,7 @@ type Server struct {
 	importer    *importer.Service
 	graphEngine *graph.Engine
 	forumEngine *forum.Engine
+	reportGenerator *report.Generator
 	router      http.Handler
 	httpServer  *http.Server
 	shutdown    sync.Once
@@ -94,6 +96,14 @@ func New(cfg Config) (*Server, error) {
 	}
 	moderator := forum.NewModerator(llmClient)
 	server.forumEngine = forum.NewEngine(agents, moderator, store, server.taskManager)
+
+	// Initialize report generator
+	reportTools := []report.Tool{
+		report.NewGraphSearchTool(store),
+		report.NewForumSearchTool(store),
+		report.NewMessageSearchTool(store),
+	}
+	server.reportGenerator = report.NewGenerator(llmClient, store, server.taskManager, reportTools)
 
 	server.router = server.routes()
 	server.httpServer = &http.Server{

@@ -60,6 +60,12 @@ func (s *Server) routes() http.Handler {
 	router.Get("/api/v1/forum/sessions", s.handleListForumSessions)
 	router.Get("/api/v1/forum/sessions/{id}", s.handleGetForumSession)
 
+	// Report endpoints
+	router.Post("/api/v1/reports/generate", s.handleGenerateReport)
+	router.Get("/api/v1/reports", s.handleListReports)
+	router.Get("/api/v1/reports/{id}", s.handleGetReport)
+	router.Delete("/api/v1/reports/{id}", s.handleDeleteReport)
+
 	return router
 }
 
