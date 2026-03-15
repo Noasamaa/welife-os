@@ -73,16 +73,6 @@ type apiError struct {
 	Type    string `json:"type"`
 }
 
-// modelsResponse is the response body from /v1/models.
-type modelsResponse struct {
-	Data  []modelEntry `json:"data"`
-	Error *apiError    `json:"error,omitempty"`
-}
-
-type modelEntry struct {
-	ID string `json:"id"`
-}
-
 // Generate sends a prompt to the cloud LLM and returns the assistant's reply.
 func (c *CloudClient) Generate(ctx context.Context, prompt string) (string, error) {
 	reqBody := chatRequest{
