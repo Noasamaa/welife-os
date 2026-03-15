@@ -188,10 +188,6 @@ func chatIRToStoredParticipants(ir *chatir.ChatIR) []storage.StoredParticipant {
 	return parts
 }
 
-type bytesReaderWrapper struct {
-	*io.SectionReader
-}
-
 func bytesReader(data []byte) io.Reader {
 	return &simpleReader{data: data, pos: 0}
 }

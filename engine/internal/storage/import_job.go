@@ -17,10 +17,7 @@ func (s *Store) CreateImportJob(ctx context.Context, job ImportJob) error {
 
 // UpdateImportJob updates mutable fields of an import job.
 func (s *Store) UpdateImportJob(ctx context.Context, id string, status string, convID string, msgCount int, errMsg string) error {
-	completedAt := sql.NullString{}
 	if status == "succeeded" || status == "failed" {
-		completedAt = sql.NullString{String: "CURRENT_TIMESTAMP", Valid: false}
-		// Use a direct SQL expression for completed_at
 		_, err := s.db.ExecContext(ctx, `
 			UPDATE import_jobs SET status = ?, conversation_id = ?, message_count = ?,
 			       error_message = ?, completed_at = CURRENT_TIMESTAMP
@@ -32,7 +29,6 @@ func (s *Store) UpdateImportJob(ctx context.Context, id string, status string, c
 		UPDATE import_jobs SET status = ?, conversation_id = ?, message_count = ?, error_message = ?
 		WHERE id = ?`,
 		status, convID, msgCount, errMsg, id)
-	_ = completedAt
 	return err
 }
 
