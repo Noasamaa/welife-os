@@ -1,4 +1,4 @@
-import type { SystemStatusResponse } from "../types/api";
+import type { SystemStatusResponse, LLMConfig } from "../types/api";
 import type {
   ImportResult,
   ImportJob,
@@ -30,6 +30,24 @@ export async function fetchSystemStatus(): Promise<SystemStatusResponse> {
   }
 
   return (await response.json()) as SystemStatusResponse;
+}
+
+export async function fetchLLMConfig(): Promise<LLMConfig> {
+  const res = await fetch(apiUrl("/api/v1/system/llm-config"));
+  if (!res.ok) throw new Error(`fetch llm config: ${res.status}`);
+  return (await res.json()) as LLMConfig;
+}
+
+export async function updateLLMConfig(patch: Partial<LLMConfig>): Promise<void> {
+  const res = await fetch(apiUrl("/api/v1/system/llm-config"), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `update llm config: ${res.status}`);
+  }
 }
 
 // Import

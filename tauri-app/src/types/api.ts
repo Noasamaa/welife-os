@@ -15,3 +15,11 @@ export interface SystemStatusResponse {
     model: string;
   };
 }
+
+export interface LLMConfig {
+  provider: string;
+  base_url: string;
+  model: string;
+  api_key: string;
+  embedding_model: string;
+}

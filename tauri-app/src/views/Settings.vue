@@ -7,36 +7,92 @@
 
     <div class="settings-grid">
       <!-- Section 1: LLM 配置 -->
-      <div class="card">
+      <div class="card card-wide">
         <h3>LLM 配置</h3>
-        <div class="info-list">
-          <div class="info-row">
-            <span class="info-label">Provider</span>
-            <span class="info-value">{{ providerLabel }}</span>
+        <div class="form-grid">
+          <div class="form-row">
+            <label class="form-label" for="llm-provider">Provider</label>
+            <select
+              id="llm-provider"
+              v-model="formProvider"
+              class="form-input"
+            >
+              <option value="ollama">Ollama (本地)</option>
+              <option value="openai-compatible">OpenAI 兼容 (云端)</option>
+            </select>
           </div>
-          <div class="info-row">
-            <span class="info-label">{{ isCloudProvider ? 'API 地址' : 'Ollama 地址' }}</span>
-            <span class="info-value">{{ systemStatus?.llm.base_url ?? "检查中..." }}</span>
+          <div class="form-row">
+            <label class="form-label" for="llm-url">
+              {{ formProvider === 'openai-compatible' ? 'API 地址' : 'Ollama 地址' }}
+            </label>
+            <input
+              id="llm-url"
+              v-model="formBaseURL"
+              type="text"
+              class="form-input"
+              placeholder="http://127.0.0.1:11434"
+            />
           </div>
-          <div class="info-row">
-            <span class="info-label">模型</span>
-            <span class="info-value">{{ systemStatus?.llm.model ?? "检查中..." }}</span>
+          <div class="form-row">
+            <label class="form-label" for="llm-model">模型</label>
+            <input
+              id="llm-model"
+              v-model="formModel"
+              type="text"
+              class="form-input"
+              placeholder="qwen3.5:9b"
+            />
           </div>
-          <div class="info-row">
-            <span class="info-label">连接状态</span>
+          <div v-if="formProvider === 'openai-compatible'" class="form-row">
+            <label class="form-label" for="llm-apikey">API Key</label>
+            <input
+              id="llm-apikey"
+              v-model="formAPIKey"
+              type="password"
+              class="form-input"
+              :placeholder="llmConfig.config?.api_key || '输入 API Key'"
+            />
+          </div>
+          <div class="form-row">
+            <label class="form-label" for="llm-embed">Embedding 模型</label>
+            <input
+              id="llm-embed"
+              v-model="formEmbeddingModel"
+              type="text"
+              class="form-input"
+              placeholder="留空则禁用向量搜索"
+            />
+          </div>
+          <div class="form-row">
+            <span class="form-label">连接状态</span>
             <span class="connection-status">
               <span class="status-dot" :class="llmConnected ? 'dot-ok' : 'dot-err'" />
               {{ llmStatusLabel }}
             </span>
           </div>
         </div>
-        <button
-          class="btn-primary test-btn"
-          :disabled="testing"
-          @click="handleTestConnection"
-        >
-          {{ testing ? "测试中..." : "测试连接" }}
-        </button>
+        <div class="btn-group">
+          <button
+            class="btn-primary"
+            :disabled="llmConfig.saving"
+            @click="handleSaveConfig"
+          >
+            {{ llmConfig.saving ? "保存中..." : "保存配置" }}
+          </button>
+          <button
+            class="btn-secondary"
+            :disabled="testing"
+            @click="handleTestConnection"
+          >
+            {{ testing ? "测试中..." : "测试连接" }}
+          </button>
+        </div>
+        <div v-if="llmConfig.saveSuccess" class="test-result result-ok">
+          配置已保存并生效
+        </div>
+        <div v-if="llmConfig.saveError" class="test-result result-err">
+          {{ llmConfig.saveError }}
+        </div>
         <div v-if="testResult" class="test-result" :class="testResult.ok ? 'result-ok' : 'result-err'">
           {{ testResult.message }}
         </div>
@@ -155,9 +211,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, watch } from "vue";
 
 import { useBackendHealth } from "../composables/useBackendHealth";
+import { useLLMConfig } from "../composables/useLLMConfig";
 import { useUpdater } from "../composables/useUpdater";
 import { fetchSystemStatus } from "../services/api";
 
@@ -169,11 +226,19 @@ interface TestResult {
 }
 
 const { systemStatus } = useBackendHealth();
-const updater = useUpdater();
+const llmConfig = reactive(useLLMConfig());
+const updater = reactive(useUpdater());
 
 const testing = ref(false);
 const testResult = ref<TestResult | null>(null);
 const currentTheme = ref<ThemeValue>("system");
+
+// LLM form fields — populated from loaded config.
+const formProvider = ref("ollama");
+const formBaseURL = ref("");
+const formModel = ref("");
+const formAPIKey = ref("");
+const formEmbeddingModel = ref("");
 
 const themeOptions: ReadonlyArray<{ value: ThemeValue; icon: string; label: string }> = [
   { value: "light", icon: "\u2600", label: "\u4eae\u8272" },
@@ -183,24 +248,38 @@ const themeOptions: ReadonlyArray<{ value: ThemeValue; icon: string; label: stri
 
 const llmConnected = computed(() => systemStatus.value?.llm.reachable === true);
 
-const isCloudProvider = computed(() => {
-  const provider = systemStatus.value?.llm.provider;
-  return provider !== undefined && provider !== "ollama";
-});
-
-const providerLabel = computed(() => {
-  const provider = systemStatus.value?.llm.provider;
-  if (!provider) return "检查中...";
-  if (provider === "ollama") return "Ollama (本地)";
-  return "OpenAI 兼容 (云端)";
-});
-
 const llmStatusLabel = computed(() => {
   if (!systemStatus.value) return "检查中...";
   return systemStatus.value.llm.reachable ? "已连接" : "未连接";
 });
 
 const storageReady = computed(() => systemStatus.value?.storage.ready === true);
+
+// Sync form fields when config is loaded from API.
+watch(() => llmConfig.config, (cfg) => {
+  if (!cfg) return;
+  formProvider.value = cfg.provider || "ollama";
+  formBaseURL.value = cfg.base_url || "";
+  formModel.value = cfg.model || "";
+  formEmbeddingModel.value = cfg.embedding_model || "";
+  // Don't populate formAPIKey — it's masked from the server.
+  formAPIKey.value = "";
+});
+
+async function handleSaveConfig(): Promise<void> {
+  testResult.value = null;
+  const patch: Record<string, string> = {
+    provider: formProvider.value,
+    base_url: formBaseURL.value,
+    model: formModel.value,
+    embedding_model: formEmbeddingModel.value,
+  };
+  // Only send api_key if the user actually typed something new.
+  if (formAPIKey.value) {
+    patch.api_key = formAPIKey.value;
+  }
+  await llmConfig.save(patch);
+}
 
 function applyTheme(theme: ThemeValue): void {
   const root = document.documentElement;
@@ -247,6 +326,7 @@ onMounted(() => {
     currentTheme.value = saved;
     applyTheme(saved);
   }
+  void llmConfig.load();
 });
 </script>
 
@@ -430,8 +510,74 @@ onMounted(() => {
   font-weight: 500;
 }
 
+.card-wide {
+  grid-column: span 2;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-label {
+  font-size: 13px;
+  color: var(--color-text-secondary, #666);
+}
+
+.form-input {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--color-bg-card, #fff);
+  color: var(--color-text, #333);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.form-input:focus {
+  border-color: var(--color-primary, #4a90d9);
+}
+
+.btn-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.btn-secondary {
+  padding: 8px 20px;
+  background: var(--color-bg-secondary, #f0f7ff);
+  color: var(--color-text, #333);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @media (max-width: 768px) {
   .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-wide {
+    grid-column: span 1;
+  }
+
+  .form-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -9,6 +9,8 @@ export function mockAllApi() {
   return {
     // System
     fetchSystemStatus: vi.spyOn(api, "fetchSystemStatus"),
+    fetchLLMConfig: vi.spyOn(api, "fetchLLMConfig"),
+    updateLLMConfig: vi.spyOn(api, "updateLLMConfig"),
 
     // Import
     uploadFile: vi.spyOn(api, "uploadFile"),
