@@ -127,7 +127,7 @@ function stopGraphPolling() {
   padding: 6px 16px;
   border: none;
   border-radius: 6px;
-  background: #2d6a4f;
+  background: var(--color-primary);
   color: #fff;
   font-weight: 600;
   cursor: pointer;
@@ -140,16 +140,16 @@ function stopGraphPolling() {
 }
 
 .btn:hover:not(:disabled) {
-  background: #1b4332;
+  background: var(--color-primary-hover);
 }
 
 .status-msg {
   margin-top: 12px;
   font-size: 14px;
-  color: #48625c;
+  color: var(--color-text-secondary);
 }
 
 .status-msg.error {
-  color: #c0392b;
+  color: var(--color-danger);
 }
 </style>

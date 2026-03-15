@@ -11,7 +11,11 @@
         <h3>LLM 配置</h3>
         <div class="info-list">
           <div class="info-row">
-            <span class="info-label">Ollama 地址</span>
+            <span class="info-label">Provider</span>
+            <span class="info-value">{{ providerLabel }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">{{ isCloudProvider ? 'API 地址' : 'Ollama 地址' }}</span>
             <span class="info-value">{{ systemStatus?.llm.base_url ?? "检查中..." }}</span>
           </div>
           <div class="info-row">
@@ -143,6 +147,18 @@ const themeOptions: ReadonlyArray<{ value: ThemeValue; icon: string; label: stri
 
 const llmConnected = computed(() => systemStatus.value?.llm.reachable === true);
 
+const isCloudProvider = computed(() => {
+  const provider = systemStatus.value?.llm.provider;
+  return provider !== undefined && provider !== "ollama";
+});
+
+const providerLabel = computed(() => {
+  const provider = systemStatus.value?.llm.provider;
+  if (!provider) return "检查中...";
+  if (provider === "ollama") return "Ollama (本地)";
+  return "OpenAI 兼容 (云端)";
+});
+
 const llmStatusLabel = computed(() => {
   if (!systemStatus.value) return "检查中...";
   return systemStatus.value.llm.reachable ? "已连接" : "未连接";
@@ -170,12 +186,15 @@ async function handleTestConnection(): Promise<void> {
     if (result.llm.reachable) {
       testResult.value = {
         ok: true,
-        message: `连接成功 - 模型: ${result.llm.model}, 地址: ${result.llm.base_url}`,
+        message: `连接成功 - Provider: ${result.llm.provider}, 模型: ${result.llm.model}`,
       };
     } else {
+      const hint = result.llm.provider === "ollama"
+        ? "Ollama 服务不可达，请检查服务是否启动。"
+        : "云端 LLM 服务不可达，请检查 API 地址和密钥。";
       testResult.value = {
         ok: false,
-        message: "Ollama 服务不可达，请检查服务是否启动。",
+        message: hint,
       };
     }
   } catch (err: unknown) {

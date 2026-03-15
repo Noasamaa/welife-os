@@ -84,12 +84,13 @@ func TestSystemStatusEndpoint(t *testing.T) {
 
 func TestSystemStatusToleratesUnavailableOllama(t *testing.T) {
 	app, err := server.New(server.Config{
-		Host:          "127.0.0.1",
-		Port:          18080,
-		DatabasePath:  testutil.TempDatabasePath(t),
-		DatabaseKey:   "welife-phase0-test-key",
-		OllamaBaseURL: "http://127.0.0.1:65530",
-		OllamaModel:   "qwen3.5:9b",
+		Host:         "127.0.0.1",
+		Port:         18080,
+		DatabasePath: testutil.TempDatabasePath(t),
+		DatabaseKey:  "welife-phase0-test-key",
+		LLMProvider:  "ollama",
+		LLMBaseURL:   "http://127.0.0.1:65530",
+		LLMModel:     "qwen3.5:9b",
 	})
 	if err != nil {
 		t.Fatalf("new server: %v", err)

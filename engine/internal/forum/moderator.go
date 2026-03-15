@@ -13,11 +13,11 @@ import (
 // Moderator controls the debate flow: generates topics, manages rounds,
 // and produces consensus summaries.
 type Moderator struct {
-	llm *llm.Client
+	llm llm.LLMClient
 }
 
 // NewModerator creates a new debate moderator.
-func NewModerator(llmClient *llm.Client) *Moderator {
+func NewModerator(llmClient llm.LLMClient) *Moderator {
 	return &Moderator{llm: llmClient}
 }
 

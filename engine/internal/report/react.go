@@ -14,12 +14,12 @@ const maxReactIterations = 5
 // ReactAgent implements the ReACT (Reasoning + Acting + Tool-use) loop
 // for generating individual report sections.
 type ReactAgent struct {
-	llm   *llm.Client
+	llm   llm.LLMClient
 	tools map[string]Tool
 }
 
 // NewReactAgent creates a new ReACT agent with the given tools.
-func NewReactAgent(llmClient *llm.Client, tools []Tool) *ReactAgent {
+func NewReactAgent(llmClient llm.LLMClient, tools []Tool) *ReactAgent {
 	toolMap := make(map[string]Tool, len(tools))
 	for _, t := range tools {
 		toolMap[t.Name()] = t

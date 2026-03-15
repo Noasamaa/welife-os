@@ -16,11 +16,11 @@ const emotionAgentName = "emotion_analyst"
 // It groups messages by contact, identifies emotion shifts, and calculates
 // relationship temperatures.
 type EmotionAgent struct {
-	llm *llm.Client
+	llm llm.LLMClient
 }
 
 // NewEmotionAgent creates a new emotion analyst agent.
-func NewEmotionAgent(llmClient *llm.Client) *EmotionAgent {
+func NewEmotionAgent(llmClient llm.LLMClient) *EmotionAgent {
 	return &EmotionAgent{llm: llmClient}
 }
 

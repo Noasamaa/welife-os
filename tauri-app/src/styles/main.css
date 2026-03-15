@@ -23,6 +23,8 @@
   --color-warning-bg: rgba(154, 103, 0, 0.12);
   --color-danger: #e74c3c;
   --color-danger-bg: rgba(231, 76, 60, 0.12);
+  --color-info: #2980b9;
+  --color-info-bg: rgba(41, 128, 185, 0.12);
   --color-muted: #526d67;
   --color-muted-bg: rgba(82, 109, 103, 0.12);
   --color-nav-text: #23433d;
@@ -57,6 +59,8 @@
   --color-warning-bg: rgba(212, 160, 23, 0.15);
   --color-danger: #f06050;
   --color-danger-bg: rgba(240, 96, 80, 0.15);
+  --color-info: #5dade2;
+  --color-info-bg: rgba(93, 173, 226, 0.15);
   --color-muted: #7a9e98;
   --color-muted-bg: rgba(122, 158, 152, 0.12);
   --color-nav-text: #c8dcd6;

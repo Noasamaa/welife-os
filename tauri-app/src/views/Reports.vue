@@ -294,7 +294,7 @@ function stopPolling() {
 
 .btn-danger {
   padding: 6px 14px;
-  background: #e74c3c;
+  background: var(--color-danger);
   color: white;
   border: none;
   border-radius: 6px;
@@ -302,7 +302,7 @@ function stopPolling() {
   font-size: 13px;
 }
 
-.error-banner { background: #fde8e8; border-color: #e74c3c; color: #c0392b; }
+.error-banner { background: var(--color-danger-bg); border-color: var(--color-danger); color: var(--color-danger); }
 
 .panel-header {
   display: flex;
@@ -333,7 +333,7 @@ function stopPolling() {
 }
 
 .report-item:hover { background: var(--color-bg-secondary, #f8f8f8); }
-.report-item.active { border-color: var(--color-primary, #4a90d9); background: #f0f7ff; }
+.report-item.active { border-color: var(--color-primary, #4a90d9); background: var(--color-primary-bg); }
 
 .report-info { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
 
@@ -348,13 +348,13 @@ function stopPolling() {
   font-weight: 500;
 }
 
-.type-weekly { background: #e8f4fd; color: #2980b9; }
-.type-monthly { background: #e8f8ef; color: #27ae60; }
-.type-annual { background: #fef3e2; color: #e67e22; }
+.type-weekly { background: var(--color-info-bg); color: var(--color-info); }
+.type-monthly { background: var(--color-success-bg); color: var(--color-success); }
+.type-annual { background: var(--color-warning-bg); color: var(--color-warning); }
 
-.status-running { background: #fef3e2; color: #e67e22; }
-.status-completed { background: #e8f8ef; color: #27ae60; }
-.status-failed { background: #fde8e8; color: #e74c3c; }
+.status-running { background: var(--color-warning-bg); color: var(--color-warning); }
+.status-completed { background: var(--color-success-bg); color: var(--color-success); }
+.status-failed { background: var(--color-danger-bg); color: var(--color-danger); }
 
 .report-meta { margin-top: 4px; font-size: 12px; color: var(--color-text-secondary, #888); }
 </style>

@@ -14,3 +14,5 @@ tauri-app/node_modules/
 tauri-app/dist/
 tauri-app/src-tauri/target/
 tauri-app/src-tauri/bin/
+
+tauri-app/coverage/

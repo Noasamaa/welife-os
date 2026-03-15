@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -16,7 +17,7 @@ import (
 
 // Engine orchestrates parallel-life simulations.
 type Engine struct {
-	llm        *llm.Client
+	llm        llm.LLMClient
 	store      *storage.Store
 	tasks      *task.Manager
 	profiler   *ProfileBuilder
@@ -24,7 +25,7 @@ type Engine struct {
 }
 
 // NewEngine creates a simulation engine.
-func NewEngine(llmClient *llm.Client, store *storage.Store, tasks *task.Manager, profiler *ProfileBuilder, graphStore *graph.GraphStore) *Engine {
+func NewEngine(llmClient llm.LLMClient, store *storage.Store, tasks *task.Manager, profiler *ProfileBuilder, graphStore *graph.GraphStore) *Engine {
 	return &Engine{
 		llm:        llmClient,
 		store:      store,
@@ -310,5 +311,7 @@ func (e *Engine) generateNarrative(ctx context.Context, config SimulationConfig,
 }
 
 func (e *Engine) failSession(ctx context.Context, sessionID string, err error) {
-	_ = e.store.UpdateSimulationSession(ctx, sessionID, "failed", err.Error(), "", 0)
+	if dbErr := e.store.UpdateSimulationSession(ctx, sessionID, "failed", err.Error(), "", 0); dbErr != nil {
+		log.Printf("simulation: failed to mark session %s as failed: %v", sessionID, dbErr)
+	}
 }

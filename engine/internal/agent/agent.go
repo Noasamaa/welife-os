@@ -70,7 +70,7 @@ type ForumMessage struct {
 
 // debateHelper builds a debate prompt and sends it to the LLM, returning a ForumMessage.
 // This is shared across all agents to avoid code duplication in Debate methods.
-func debateHelper(ctx context.Context, client *llm.Client, agentName, roleDescription string, state DebateState) (ForumMessage, error) {
+func debateHelper(ctx context.Context, client llm.LLMClient, agentName, roleDescription string, state DebateState) (ForumMessage, error) {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "你是%s，正在参与一场多视角辩论。\n\n", roleDescription)
 	fmt.Fprintf(&sb, "当前辩论议题：%s\n\n", state.Topic)

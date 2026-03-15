@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
+	"sync/atomic"
 	"time"
 
 	"github.com/welife-os/welife-os/engine/internal/chatir"
@@ -11,6 +13,8 @@ import (
 	"github.com/welife-os/welife-os/engine/internal/storage"
 	"github.com/welife-os/welife-os/engine/internal/task"
 )
+
+var importSeq uint64
 
 // Service orchestrates the import pipeline: detect → parse → store.
 type Service struct {
@@ -66,13 +70,18 @@ func (s *Service) Import(ctx context.Context, req ImportRequest) (ImportResult, 
 		}
 	}
 
-	// Read all data into memory so the async task owns it
-	raw, err := io.ReadAll(req.Data)
+	// Read all data into memory so the async task owns it.
+	// Limit to 512MB to prevent OOM on oversized files.
+	const maxImportSize = 512 << 20
+	raw, err := io.ReadAll(io.LimitReader(req.Data, maxImportSize+1))
 	if err != nil {
 		return ImportResult{}, fmt.Errorf("reading file data: %w", err)
 	}
+	if len(raw) > maxImportSize {
+		return ImportResult{}, fmt.Errorf("file too large: exceeds 512MB limit")
+	}
 
-	jobID := fmt.Sprintf("import_%d", time.Now().UnixNano())
+	jobID := fmt.Sprintf("import_%d_%d", time.Now().UnixNano(), atomic.AddUint64(&importSeq, 1))
 
 	// Create import job record
 	if err := s.store.CreateImportJob(ctx, storage.ImportJob{
@@ -94,7 +103,9 @@ func (s *Service) Import(ctx context.Context, req ImportRequest) (ImportResult, 
 	})
 
 	// Update job with task ID
-	_ = s.store.BindImportJobTask(ctx, jobID, taskID)
+	if err := s.store.BindImportJobTask(ctx, jobID, taskID); err != nil {
+		log.Printf("importer: binding task to job %s: %v", jobID, err)
+	}
 
 	return ImportResult{
 		JobID:  jobID,
@@ -107,7 +118,9 @@ func (s *Service) runImport(ctx context.Context, jobID string, data []byte, p pa
 	// Parse
 	ir, err := p.Parse(ctx, bytesReader(data), opts)
 	if err != nil {
-		_ = s.store.UpdateImportJob(ctx, jobID, "failed", "", 0, err.Error())
+		if dbErr := s.store.UpdateImportJob(ctx, jobID, "failed", "", 0, err.Error()); dbErr != nil {
+			log.Printf("importer: updating job %s status: %v", jobID, dbErr)
+		}
 		return fmt.Errorf("parsing: %w", err)
 	}
 
@@ -124,12 +137,16 @@ func (s *Service) runImport(ctx context.Context, jobID string, data []byte, p pa
 	msgs := chatIRToStoredMessages(ir)
 	parts := chatIRToStoredParticipants(ir)
 	if err := s.store.SaveConversationBundle(ctx, conv, msgs, parts); err != nil {
-		_ = s.store.UpdateImportJob(ctx, jobID, "failed", ir.ConversationID, len(msgs), err.Error())
+		if dbErr := s.store.UpdateImportJob(ctx, jobID, "failed", ir.ConversationID, len(msgs), err.Error()); dbErr != nil {
+			log.Printf("importer: updating job %s status: %v", jobID, dbErr)
+		}
 		return fmt.Errorf("saving import bundle: %w", err)
 	}
 
 	// Mark success
-	_ = s.store.UpdateImportJob(ctx, jobID, "succeeded", ir.ConversationID, len(msgs), "")
+	if err := s.store.UpdateImportJob(ctx, jobID, "succeeded", ir.ConversationID, len(msgs), ""); err != nil {
+		log.Printf("importer: marking job %s succeeded: %v", jobID, err)
+	}
 	return nil
 }
 

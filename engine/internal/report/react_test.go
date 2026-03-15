@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"github.com/welife-os/welife-os/engine/internal/llm"
@@ -119,12 +120,12 @@ func TestReactAgentFinishesImmediately(t *testing.T) {
 
 func TestReactAgentCallsTool(t *testing.T) {
 	// LLM first calls a tool, then finishes
-	callCount := 0
+	var callCount atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/generate" {
-			callCount++
+			n := callCount.Add(1)
 			var resp string
-			if callCount == 1 {
+			if n == 1 {
 				resp = `{"thought": "需要搜索消息", "action": "test_tool", "params": {"keyword": "test"}, "finished": false}`
 			} else {
 				resp = `{"thought": "数据充分", "action": "finish", "narrative": "基于工具数据的叙述", "finished": true}`
@@ -163,8 +164,8 @@ func TestReactAgentCallsTool(t *testing.T) {
 	if section.Narrative != "基于工具数据的叙述" {
 		t.Fatalf("unexpected narrative: %s", section.Narrative)
 	}
-	if callCount < 2 {
-		t.Fatalf("expected at least 2 LLM calls, got %d", callCount)
+	if callCount.Load() < 2 {
+		t.Fatalf("expected at least 2 LLM calls, got %d", callCount.Load())
 	}
 }
 
@@ -193,12 +194,12 @@ func TestReactAgentContextCancel(t *testing.T) {
 }
 
 func TestReactAgentScopesToolCalls(t *testing.T) {
-	callCount := 0
+	var callCount atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/generate" {
-			callCount++
+			n := callCount.Add(1)
 			var resp string
-			if callCount == 1 {
+			if n == 1 {
 				resp = `{"thought": "先查消息", "action": "message_search", "params": {"conversation_id": "wrong", "after": "2026-01-01T00:00:00Z"}, "finished": false}`
 			} else {
 				resp = `{"thought": "完成", "action": "finish", "narrative": "完成", "finished": true}`

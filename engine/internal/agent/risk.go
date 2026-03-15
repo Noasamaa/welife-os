@@ -14,11 +14,11 @@ const riskAgentName = "risk_debate_team"
 // RiskAgent runs 3 sub-perspectives (optimist, pessimist, realist) in parallel,
 // then uses a moderator prompt to synthesize a final risk assessment.
 type RiskAgent struct {
-	llm *llm.Client
+	llm llm.LLMClient
 }
 
 // NewRiskAgent creates a new risk debate team agent.
-func NewRiskAgent(llmClient *llm.Client) *RiskAgent {
+func NewRiskAgent(llmClient llm.LLMClient) *RiskAgent {
 	return &RiskAgent{llm: llmClient}
 }
 
