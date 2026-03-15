@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-const currentSchemaVersion = 4
+const currentSchemaVersion = 5
 
 // migrateV1toV2 adds Phase 1 tables for conversations, messages, participants,
 // attachments, import jobs, entities, and relationships.
@@ -148,6 +148,87 @@ var migrateV3toV4 = []string{
 	`UPDATE schema_state SET version = 4, updated_at = CURRENT_TIMESTAMP WHERE id = 1;`,
 }
 
+// migrateV4toV5 adds Phase 4 tables: action items, reminders, person profiles, simulation.
+var migrateV4toV5 = []string{
+	`CREATE TABLE IF NOT EXISTS action_items (
+    id TEXT PRIMARY KEY,
+    source_agent TEXT NOT NULL,
+    source_session_id TEXT,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    priority TEXT NOT NULL DEFAULT 'medium',
+    status TEXT NOT NULL DEFAULT 'pending',
+    category TEXT NOT NULL DEFAULT 'general',
+    related_entity_id TEXT,
+    due_date TEXT,
+    completed_at TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);`,
+	`CREATE INDEX IF NOT EXISTS idx_action_items_status ON action_items(status);`,
+	`CREATE INDEX IF NOT EXISTS idx_action_items_category ON action_items(category);`,
+	`CREATE INDEX IF NOT EXISTS idx_action_items_priority ON action_items(priority);`,
+	`CREATE TABLE IF NOT EXISTS reminder_rules (
+    id TEXT PRIMARY KEY,
+    action_item_id TEXT,
+    rule_type TEXT NOT NULL,
+    entity_id TEXT,
+    threshold_days INTEGER,
+    cron_expr TEXT,
+    message_template TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    last_triggered_at TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);`,
+	`CREATE TABLE IF NOT EXISTS reminders (
+    id TEXT PRIMARY KEY,
+    rule_id TEXT NOT NULL,
+    message TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    triggered_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    read_at TEXT,
+    FOREIGN KEY (rule_id) REFERENCES reminder_rules(id)
+);`,
+	`CREATE INDEX IF NOT EXISTS idx_reminders_status ON reminders(status);`,
+	`CREATE TABLE IF NOT EXISTS person_profiles (
+    id TEXT PRIMARY KEY,
+    entity_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    personality TEXT NOT NULL DEFAULT '{}',
+    relationship_to_self TEXT NOT NULL DEFAULT '{}',
+    behavioral_patterns TEXT,
+    source_conversation_ids TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (entity_id) REFERENCES entities(id)
+);`,
+	`CREATE INDEX IF NOT EXISTS idx_person_profiles_entity ON person_profiles(entity_id);`,
+	`CREATE TABLE IF NOT EXISTS simulation_sessions (
+    id TEXT PRIMARY KEY,
+    task_id TEXT NOT NULL,
+    fork_description TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'running',
+    step_count INTEGER NOT NULL DEFAULT 0,
+    original_graph_snapshot TEXT,
+    final_graph_snapshot TEXT,
+    narrative TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TEXT
+);`,
+	`CREATE INDEX IF NOT EXISTS idx_simulation_sessions_status ON simulation_sessions(status);`,
+	`CREATE TABLE IF NOT EXISTS simulation_steps (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    step_number INTEGER NOT NULL,
+    description TEXT NOT NULL,
+    entity_changes TEXT NOT NULL DEFAULT '{}',
+    reactions TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES simulation_sessions(id)
+);`,
+	`CREATE INDEX IF NOT EXISTS idx_simulation_steps_session ON simulation_steps(session_id);`,
+	`UPDATE schema_state SET version = 5, updated_at = CURRENT_TIMESTAMP WHERE id = 1;`,
+}
+
 // migrate checks the current schema version and applies pending migrations.
 func migrate(ctx context.Context, db *sql.DB) error {
 	var version int
@@ -182,6 +263,15 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		for _, stmt := range migrateV3toV4 {
 			if _, err := db.ExecContext(ctx, stmt); err != nil {
 				return fmt.Errorf("migrating v3 to v4: %w", err)
+			}
+		}
+		version = 4
+	}
+
+	if version == 4 {
+		for _, stmt := range migrateV4toV5 {
+			if _, err := db.ExecContext(ctx, stmt); err != nil {
+				return fmt.Errorf("migrating v4 to v5: %w", err)
 			}
 		}
 	}
