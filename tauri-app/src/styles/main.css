@@ -1,12 +1,106 @@
 @import "tailwindcss";
 
 :root {
+  /* Light theme (default) */
+  --color-bg: #f6f7eb;
+  --color-bg-gradient: radial-gradient(circle at top left, rgba(255, 209, 102, 0.28), transparent 30%),
+    linear-gradient(135deg, #f6f7eb 0%, #d8f3dc 100%);
+  --color-bg-secondary: #f0f1e5;
+  --color-bg-card: rgba(255, 255, 255, 0.7);
+  --color-bg-card-solid: #ffffff;
+  --color-text: #16302b;
+  --color-text-secondary: #48625c;
+  --color-text-muted: #607670;
+  --color-text-label: #6c8b84;
+  --color-border: rgba(22, 48, 43, 0.08);
+  --color-primary: #2d6a4f;
+  --color-primary-hover: #1b5e3b;
+  --color-primary-bg: rgba(45, 106, 79, 0.14);
+  --color-primary-bg-hover: rgba(45, 106, 79, 0.08);
+  --color-success: #1f7a55;
+  --color-success-bg: rgba(31, 122, 85, 0.12);
+  --color-warning: #9a6700;
+  --color-warning-bg: rgba(154, 103, 0, 0.12);
+  --color-danger: #e74c3c;
+  --color-danger-bg: rgba(231, 76, 60, 0.12);
+  --color-muted: #526d67;
+  --color-muted-bg: rgba(82, 109, 103, 0.12);
+  --color-nav-text: #23433d;
+  --card-shadow: 0 20px 50px rgba(22, 48, 43, 0.08);
+  --card-backdrop: blur(12px);
+
   color-scheme: light;
   font-family: "Noto Sans SC", "PingFang SC", sans-serif;
-  background:
-    radial-gradient(circle at top left, rgba(255, 209, 102, 0.28), transparent 30%),
-    linear-gradient(135deg, #f6f7eb 0%, #d8f3dc 100%);
-  color: #16302b;
+  background: var(--color-bg-gradient);
+  color: var(--color-text);
+}
+
+.dark {
+  --color-bg: #1a1a2e;
+  --color-bg-gradient: radial-gradient(circle at top left, rgba(74, 55, 10, 0.3), transparent 30%),
+    linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  --color-bg-secondary: #16213e;
+  --color-bg-card: rgba(15, 52, 96, 0.6);
+  --color-bg-card-solid: #0f3460;
+  --color-text: #e0e0e0;
+  --color-text-secondary: #a8b8b4;
+  --color-text-muted: #8a9e98;
+  --color-text-label: #7a9990;
+  --color-border: rgba(160, 200, 220, 0.1);
+  --color-primary: #5aaf8a;
+  --color-primary-hover: #4a9f7a;
+  --color-primary-bg: rgba(90, 175, 138, 0.18);
+  --color-primary-bg-hover: rgba(90, 175, 138, 0.1);
+  --color-success: #4aba8a;
+  --color-success-bg: rgba(74, 186, 138, 0.15);
+  --color-warning: #d4a017;
+  --color-warning-bg: rgba(212, 160, 23, 0.15);
+  --color-danger: #f06050;
+  --color-danger-bg: rgba(240, 96, 80, 0.15);
+  --color-muted: #7a9e98;
+  --color-muted-bg: rgba(122, 158, 152, 0.12);
+  --color-nav-text: #c8dcd6;
+  --card-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  --card-backdrop: blur(12px);
+
+  color-scheme: dark;
+  background: var(--color-bg-gradient);
+  color: var(--color-text);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --color-bg: #1a1a2e;
+    --color-bg-gradient: radial-gradient(circle at top left, rgba(74, 55, 10, 0.3), transparent 30%),
+      linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    --color-bg-secondary: #16213e;
+    --color-bg-card: rgba(15, 52, 96, 0.6);
+    --color-bg-card-solid: #0f3460;
+    --color-text: #e0e0e0;
+    --color-text-secondary: #a8b8b4;
+    --color-text-muted: #8a9e98;
+    --color-text-label: #7a9990;
+    --color-border: rgba(160, 200, 220, 0.1);
+    --color-primary: #5aaf8a;
+    --color-primary-hover: #4a9f7a;
+    --color-primary-bg: rgba(90, 175, 138, 0.18);
+    --color-primary-bg-hover: rgba(90, 175, 138, 0.1);
+    --color-success: #4aba8a;
+    --color-success-bg: rgba(74, 186, 138, 0.15);
+    --color-warning: #d4a017;
+    --color-warning-bg: rgba(212, 160, 23, 0.15);
+    --color-danger: #f06050;
+    --color-danger-bg: rgba(240, 96, 80, 0.15);
+    --color-muted: #7a9e98;
+    --color-muted-bg: rgba(122, 158, 152, 0.12);
+    --color-nav-text: #c8dcd6;
+    --card-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+    --card-backdrop: blur(12px);
+
+    color-scheme: dark;
+    background: var(--color-bg-gradient);
+    color: var(--color-text);
+  }
 }
 
 * {
@@ -17,6 +111,9 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: var(--color-bg-gradient);
+  color: var(--color-text);
+  transition: background 300ms ease, color 300ms ease;
 }
 
 a {
@@ -34,12 +131,17 @@ textarea {
   min-height: 100vh;
 }
 
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-text);
+}
+
 .card {
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(22, 48, 43, 0.08);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
   border-radius: 20px;
-  box-shadow: 0 20px 50px rgba(22, 48, 43, 0.08);
-  backdrop-filter: blur(12px);
+  box-shadow: var(--card-shadow);
+  backdrop-filter: var(--card-backdrop);
+  transition: background 300ms ease, border-color 300ms ease, box-shadow 300ms ease;
 }
 
 .status-pill {
@@ -62,16 +164,16 @@ textarea {
 }
 
 .status-pill.ok {
-  color: #1f7a55;
-  background: rgba(31, 122, 85, 0.12);
+  color: var(--color-success);
+  background: var(--color-success-bg);
 }
 
 .status-pill.warn {
-  color: #9a6700;
-  background: rgba(154, 103, 0, 0.12);
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
 }
 
 .status-pill.pending {
-  color: #526d67;
-  background: rgba(82, 109, 103, 0.12);
+  color: var(--color-muted);
+  background: var(--color-muted-bg);
 }

@@ -16,7 +16,7 @@
     </div>
 
     <div class="footnote">
-      <p>Phase 0</p>
+      <p>v1.0.0</p>
       <small>先把结构搭稳，再接入导入、报告与 Agent 能力。</small>
     </div>
   </aside>
@@ -28,6 +28,7 @@ const items = [
   { to: "/import", label: "导入", hint: "Import" },
   { to: "/reports", label: "报告", hint: "Reports" },
   { to: "/forum", label: "论坛", hint: "Forum" },
+  { to: "/coach", label: "执行教练", hint: "Coach" },
   { to: "/timeline", label: "时间线", hint: "Timeline" },
   { to: "/simulation", label: "模拟", hint: "Simulation" },
   { to: "/settings", label: "设置", hint: "Settings" },
@@ -48,7 +49,7 @@ const items = [
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #6c8b84;
+  color: var(--color-text-label);
 }
 
 nav {
@@ -61,30 +62,31 @@ nav {
   gap: 4px;
   padding: 14px 16px;
   border-radius: 16px;
-  color: #23433d;
+  color: var(--color-nav-text);
   transition: transform 160ms ease, background 160ms ease;
 }
 
 .nav-item.router-link-exact-active {
-  background: rgba(45, 106, 79, 0.14);
+  background: var(--color-primary-bg);
 }
 
 .nav-item:hover {
-  background: rgba(45, 106, 79, 0.08);
+  background: var(--color-primary-bg-hover);
   transform: translateX(2px);
 }
 
 small {
-  color: #607670;
+  color: var(--color-text-muted);
 }
 
 .footnote {
   padding-top: 24px;
-  border-top: 1px solid rgba(22, 48, 43, 0.08);
+  border-top: 1px solid var(--color-border);
 }
 
 .footnote p {
   margin: 0 0 8px;
   font-weight: 700;
+  color: var(--color-text);
 }
 </style>

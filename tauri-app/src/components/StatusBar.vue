@@ -88,11 +88,12 @@ const llmClass = computed(() => {
 .label {
   margin: 0 0 6px;
   font-size: 12px;
-  color: #607670;
+  color: var(--color-text-muted);
 }
 
 strong {
   word-break: break-all;
+  color: var(--color-text);
 }
 
 @media (max-width: 1100px) {

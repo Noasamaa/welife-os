@@ -50,19 +50,20 @@ import StatusBar from "./StatusBar.vue";
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #2d6a4f;
+  color: var(--color-primary);
 }
 
 h1 {
   margin: 8px 0 10px;
   font-size: 38px;
   line-height: 1;
+  color: var(--color-text);
 }
 
 .subtitle {
   margin: 0;
   max-width: 520px;
-  color: #48625c;
+  color: var(--color-text-secondary);
 }
 
 .page {
@@ -83,4 +84,3 @@ h1 {
   }
 }
 </style>
-

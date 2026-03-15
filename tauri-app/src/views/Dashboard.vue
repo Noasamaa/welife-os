@@ -18,14 +18,46 @@
         </div>
       </div>
     </section>
+
     <section class="card block">
-      <h2>Phase 0 闭环</h2>
-      <ul>
-        <li>Go sidecar 默认监听 `127.0.0.1:18080`</li>
-        <li>桌面端开发态拉起 `go run ./cmd/welife`</li>
-        <li>系统状态页展示 backend / storage / llm 三类健康度</li>
-      </ul>
+      <div class="card-header">
+        <h2>待办事项</h2>
+        <span v-if="pendingActionCount > 0" class="badge">{{ pendingActionCount }}</span>
+      </div>
+      <p class="card-description">来自执行教练的行动项</p>
+      <div class="action-summary">
+        <div class="summary-row">
+          <span class="summary-label">待处理</span>
+          <span class="summary-value pending-text">{{ pendingActionCount }}</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">进行中</span>
+          <span class="summary-value active-text">{{ inProgressActionCount }}</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">已完成</span>
+          <span class="summary-value success-text">{{ completedActionCount }}</span>
+        </div>
+      </div>
     </section>
+
+    <section class="card block">
+      <div class="card-header">
+        <h2>提醒</h2>
+        <span v-if="pendingReminderCount > 0" class="badge badge-warning">{{ pendingReminderCount }}</span>
+      </div>
+      <p class="card-description">待处理的提醒通知</p>
+      <div class="reminder-summary">
+        <div v-if="pendingReminderCount > 0" class="reminder-count">
+          <span class="count-number">{{ pendingReminderCount }}</span>
+          <span class="count-label">条待处理提醒</span>
+        </div>
+        <div v-else class="reminder-empty">
+          <span>暂无待处理提醒</span>
+        </div>
+      </div>
+    </section>
+
     <section class="card block">
       <h2>当前配置</h2>
       <ul>
@@ -38,11 +70,41 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 import { useBackendHealth } from "../composables/useBackendHealth";
+import { fetchActionItems, fetchPendingReminders } from "../services/api";
+import type { ActionItem } from "../types/coach";
+import type { Reminder } from "../types/reminder";
 
 const { status, systemStatus } = useBackendHealth();
+
+const actionItems = ref<ActionItem[]>([]);
+const reminders = ref<Reminder[]>([]);
+
+const pendingActionCount = computed(
+  () => actionItems.value.filter((i) => i.status === "pending").length,
+);
+const inProgressActionCount = computed(
+  () => actionItems.value.filter((i) => i.status === "in_progress").length,
+);
+const completedActionCount = computed(
+  () => actionItems.value.filter((i) => i.status === "completed").length,
+);
+const pendingReminderCount = computed(() => reminders.value.length);
+
+onMounted(async () => {
+  try {
+    actionItems.value = await fetchActionItems();
+  } catch {
+    actionItems.value = [];
+  }
+  try {
+    reminders.value = await fetchPendingReminders();
+  } catch {
+    reminders.value = [];
+  }
+});
 
 const backendLabel = computed(() => {
   if (status.value === "healthy") {
@@ -96,12 +158,60 @@ const llmClass = computed(() => {
 <style scoped>
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
 }
 
 .block {
   padding: 24px;
+}
+
+h2 {
+  margin: 0 0 8px;
+  color: var(--color-text);
+}
+
+p {
+  color: var(--color-text-secondary);
+}
+
+ul {
+  color: var(--color-text-secondary);
+  padding-left: 20px;
+}
+
+li {
+  margin-bottom: 6px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-description {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-bg-card-solid);
+  background: var(--color-primary);
+}
+
+.badge-warning {
+  background: var(--color-warning);
 }
 
 .status-list {
@@ -115,6 +225,75 @@ const llmClass = computed(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  color: var(--color-text-secondary);
+}
+
+.action-summary {
+  display: grid;
+  gap: 10px;
+}
+
+.summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--color-muted-bg);
+}
+
+.summary-label {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.summary-value {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.pending-text {
+  color: var(--color-warning);
+}
+
+.active-text {
+  color: var(--color-primary);
+}
+
+.success-text {
+  color: var(--color-success);
+}
+
+.reminder-summary {
+  margin-top: 4px;
+}
+
+.reminder-count {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--color-warning-bg);
+}
+
+.count-number {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-warning);
+}
+
+.count-label {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.reminder-empty {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--color-muted-bg);
+  font-size: 14px;
+  color: var(--color-text-muted);
 }
 
 @media (max-width: 900px) {
