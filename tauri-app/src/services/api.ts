@@ -10,6 +10,9 @@ import type {
   ForumSessionDetail,
 } from "../types/forum";
 import type { Report, ReportType } from "../types/report";
+import type { ActionItem } from "../types/coach";
+import type { ReminderRule, Reminder } from "../types/reminder";
+import type { PersonProfile, SimulationSession, SimulationDetail } from "../types/simulation";
 
 export const API_BASE_URL = "http://127.0.0.1:18080";
 
@@ -137,4 +140,156 @@ export async function deleteReport(id: string): Promise<void> {
     method: "DELETE",
   });
   if (!res.ok) throw new Error(`delete report: ${res.status}`);
+}
+
+// Coach / Action Items
+export async function generateActionPlan(
+  sessionID: string,
+): Promise<ActionItem[]> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/coach/generate-plan`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session_id: sessionID }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return (await res.json()) as ActionItem[];
+}
+
+export async function fetchActionItems(
+  status?: string,
+  category?: string,
+): Promise<ActionItem[]> {
+  const params = new URLSearchParams();
+  if (status) params.set("status", status);
+  if (category) params.set("category", category);
+  const q = params.toString();
+  const res = await fetch(`${API_BASE_URL}/api/v1/action-items${q ? "?" + q : ""}`);
+  if (!res.ok) throw new Error(`fetch action items: ${res.status}`);
+  return (await res.json()) as ActionItem[];
+}
+
+export async function updateActionItemStatus(
+  id: string,
+  status: string,
+): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/action-items/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+}
+
+export async function deleteActionItem(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/action-items/${id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(`delete action item: ${res.status}`);
+}
+
+// Reminders
+export async function fetchPendingReminders(): Promise<Reminder[]> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/reminders/pending`);
+  if (!res.ok) throw new Error(`fetch reminders: ${res.status}`);
+  return (await res.json()) as Reminder[];
+}
+
+export async function markReminderRead(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/reminders/${id}/read`, {
+    method: "PATCH",
+  });
+  if (!res.ok) throw new Error(`mark read: ${res.status}`);
+}
+
+export async function dismissReminder(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/reminders/${id}/dismiss`, {
+    method: "PATCH",
+  });
+  if (!res.ok) throw new Error(`dismiss: ${res.status}`);
+}
+
+export async function fetchReminderRules(): Promise<ReminderRule[]> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/reminder-rules`);
+  if (!res.ok) throw new Error(`fetch rules: ${res.status}`);
+  return (await res.json()) as ReminderRule[];
+}
+
+export async function createReminderRule(
+  rule: Omit<ReminderRule, "id" | "created_at" | "last_triggered_at">,
+): Promise<ReminderRule> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/reminder-rules`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(rule),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return (await res.json()) as ReminderRule;
+}
+
+export async function updateReminderRule(
+  id: string,
+  enabled: boolean,
+): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/reminder-rules/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
+  if (!res.ok) throw new Error(`update rule: ${res.status}`);
+}
+
+export async function deleteReminderRule(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/reminder-rules/${id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(`delete rule: ${res.status}`);
+}
+
+// Simulation
+export async function buildProfiles(): Promise<{ task_id: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/simulation/profiles/build`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return (await res.json()) as { task_id: string };
+}
+
+export async function fetchProfiles(): Promise<PersonProfile[]> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/simulation/profiles`);
+  if (!res.ok) throw new Error(`fetch profiles: ${res.status}`);
+  return (await res.json()) as PersonProfile[];
+}
+
+export async function runSimulation(
+  forkDescription: string,
+  affectedNodes: string[],
+  changes: Record<string, string>,
+  steps?: number,
+): Promise<{ session_id: string; task_id: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/simulation/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      steps: steps ?? 5,
+      fork_point: {
+        description: forkDescription,
+        affected_nodes: affectedNodes,
+        changes,
+      },
+    }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return (await res.json()) as { session_id: string; task_id: string };
+}
+
+export async function fetchSimulations(): Promise<SimulationSession[]> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/simulation/sessions`);
+  if (!res.ok) throw new Error(`fetch simulations: ${res.status}`);
+  return (await res.json()) as SimulationSession[];
+}
+
+export async function fetchSimulation(id: string): Promise<SimulationDetail> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/simulation/sessions/${id}`);
+  if (!res.ok) throw new Error(`fetch simulation: ${res.status}`);
+  return (await res.json()) as SimulationDetail;
 }
