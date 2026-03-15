@@ -15,11 +15,12 @@ jobs:
         working-directory: engine
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.26"
+          cache-dependency-path: engine/go.sum
 
       - name: Install dependencies
         run: |
@@ -37,6 +38,8 @@ jobs:
         with:
           version: latest
           working-directory: engine
+          install-go: false
+          use-cache: false
 
       - name: Test
         run: go test -race -cover -coverprofile=coverage.out ./...
@@ -52,9 +55,9 @@ jobs:
         working-directory: tauri-app
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
 
