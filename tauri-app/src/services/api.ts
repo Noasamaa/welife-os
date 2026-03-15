@@ -5,6 +5,10 @@ import type {
   Conversation,
   GraphOverview,
 } from "../types/import";
+import type {
+  ForumSession,
+  ForumSessionDetail,
+} from "../types/forum";
 
 export const API_BASE_URL = "http://127.0.0.1:18080";
 
@@ -66,4 +70,31 @@ export async function fetchGraphOverview(): Promise<GraphOverview> {
   const res = await fetch(`${API_BASE_URL}/api/v1/graph/overview`);
   if (!res.ok) throw new Error(`fetch graph: ${res.status}`);
   return (await res.json()) as GraphOverview;
+}
+
+// Forum
+export async function triggerDebate(
+  conversationID: string,
+): Promise<{ session_id: string; task_id: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/forum/debate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ conversation_id: conversationID }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return (await res.json()) as { session_id: string; task_id: string };
+}
+
+export async function fetchForumSessions(): Promise<ForumSession[]> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/forum/sessions`);
+  if (!res.ok) throw new Error(`fetch sessions: ${res.status}`);
+  return (await res.json()) as ForumSession[];
+}
+
+export async function fetchForumSession(
+  id: string,
+): Promise<ForumSessionDetail> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/forum/sessions/${id}`);
+  if (!res.ok) throw new Error(`fetch session: ${res.status}`);
+  return (await res.json()) as ForumSessionDetail;
 }
