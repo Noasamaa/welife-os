@@ -61,8 +61,8 @@ func TestCreateReminderRuleRejectsMissingRequiredFields(t *testing.T) {
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("unexpected status: %d", recorder.Code)
 	}
-	if !strings.Contains(recorder.Body.String(), "action_item_id") {
-		t.Fatalf("expected action_item_id validation error, got %s", recorder.Body.String())
+	if !strings.Contains(recorder.Body.String(), "invalid rule") {
+		t.Fatalf("expected invalid rule error, got %s", recorder.Body.String())
 	}
 }
 

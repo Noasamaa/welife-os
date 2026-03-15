@@ -2,8 +2,8 @@ package server
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/welife-os/welife-os/engine/internal/storage"
@@ -26,11 +26,7 @@ func (s *Server) handleGenerateActionPlan(w http.ResponseWriter, r *http.Request
 
 	items, err := s.coachAgent.GenerateActionPlan(r.Context(), req.SessionID)
 	if err != nil {
-		status := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "not found") {
-			status = http.StatusNotFound
-		}
-		writeJSON(w, status, map[string]string{"error": err.Error()})
+		writeResourceError(w, "generate-action-plan", err, "failed to generate action plan")
 		return
 	}
 
@@ -46,7 +42,8 @@ func (s *Server) handleListActionItems(w http.ResponseWriter, r *http.Request) {
 
 	items, err := s.store.ListActionItems(r.Context(), status, category)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		log.Printf("list-action-items: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list action items"})
 		return
 	}
 	if items == nil {
@@ -61,11 +58,7 @@ func (s *Server) handleGetActionItem(w http.ResponseWriter, r *http.Request) {
 
 	item, err := s.store.GetActionItem(r.Context(), id)
 	if err != nil {
-		status := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "not found") {
-			status = http.StatusNotFound
-		}
-		writeJSON(w, status, map[string]string{"error": err.Error()})
+		writeResourceError(w, "get-action-item", err, "failed to get action item")
 		return
 	}
 	writeJSON(w, http.StatusOK, item)
@@ -88,11 +81,7 @@ func (s *Server) handleUpdateActionItem(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := s.store.UpdateActionItemStatus(r.Context(), id, req.Status); err != nil {
-		status := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "not found") {
-			status = http.StatusNotFound
-		}
-		writeJSON(w, status, map[string]string{"error": err.Error()})
+		writeResourceError(w, "update-action-item", err, "failed to update action item")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})
@@ -102,11 +91,7 @@ func (s *Server) handleDeleteActionItem(w http.ResponseWriter, r *http.Request) 
 	id := chi.URLParam(r, "id")
 
 	if err := s.store.DeleteActionItem(r.Context(), id); err != nil {
-		status := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "not found") {
-			status = http.StatusNotFound
-		}
-		writeJSON(w, status, map[string]string{"error": err.Error()})
+		writeResourceError(w, "delete-action-item", err, "failed to delete action item")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})

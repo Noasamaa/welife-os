@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 
@@ -163,4 +164,18 @@ func writeJSON(w http.ResponseWriter, statusCode int, payload any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(statusCode)
 	_ = json.NewEncoder(w).Encode(payload)
+}
+
+// writeResourceError logs the real error server-side and returns a safe
+// HTTP response. If the error message contains "not found" it maps to 404;
+// otherwise it maps to 500.
+func writeResourceError(w http.ResponseWriter, handler string, err error, fallbackMsg string) {
+	status := http.StatusInternalServerError
+	msg := fallbackMsg
+	if strings.Contains(err.Error(), "not found") {
+		status = http.StatusNotFound
+		msg = "resource not found"
+	}
+	log.Printf("%s: %v", handler, err)
+	writeJSON(w, status, map[string]string{"error": msg})
 }

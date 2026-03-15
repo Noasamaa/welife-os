@@ -2,8 +2,8 @@ package server
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/welife-os/welife-os/engine/internal/storage"
@@ -26,11 +26,7 @@ func (s *Server) handleTriggerDebate(w http.ResponseWriter, r *http.Request) {
 
 	sessionID, taskID, err := s.forumEngine.RunDebate(r.Context(), req.ConversationID)
 	if err != nil {
-		status := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "not found") {
-			status = http.StatusNotFound
-		}
-		writeJSON(w, status, map[string]string{"error": err.Error()})
+		writeResourceError(w, "trigger-debate", err, "failed to start debate")
 		return
 	}
 
@@ -43,7 +39,8 @@ func (s *Server) handleTriggerDebate(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListForumSessions(w http.ResponseWriter, r *http.Request) {
 	sessions, err := s.forumEngine.ListSessions(r.Context())
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		log.Printf("list-forum-sessions: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list sessions"})
 		return
 	}
 	if sessions == nil {
@@ -58,17 +55,14 @@ func (s *Server) handleGetForumSession(w http.ResponseWriter, r *http.Request) {
 
 	session, err := s.forumEngine.GetSession(r.Context(), id)
 	if err != nil {
-		status := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "not found") {
-			status = http.StatusNotFound
-		}
-		writeJSON(w, status, map[string]string{"error": err.Error()})
+		writeResourceError(w, "get-forum-session", err, "failed to get session")
 		return
 	}
 
 	messages, err := s.forumEngine.GetSessionMessages(r.Context(), id)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		log.Printf("get-forum-messages: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to get session messages"})
 		return
 	}
 

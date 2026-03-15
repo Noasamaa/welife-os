@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/welife-os/welife-os/engine/internal/importer"
@@ -56,7 +56,8 @@ func (s *Server) handleImportUpload(w http.ResponseWriter, r *http.Request) {
 
 	result, err := s.importer.Import(r.Context(), req)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		log.Printf("import-upload: %v", err)
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "import failed"})
 		return
 	}
 
@@ -66,7 +67,8 @@ func (s *Server) handleImportUpload(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListImportJobs(w http.ResponseWriter, r *http.Request) {
 	jobs, err := s.store.ListImportJobs(r.Context())
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		log.Printf("list-import-jobs: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list import jobs"})
 		return
 	}
 	writeJSON(w, http.StatusOK, jobs)
@@ -76,11 +78,7 @@ func (s *Server) handleGetImportJob(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	job, err := s.store.GetImportJob(r.Context(), id)
 	if err != nil {
-		status := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "not found") {
-			status = http.StatusNotFound
-		}
-		writeJSON(w, status, map[string]string{"error": err.Error()})
+		writeResourceError(w, "get-import-job", err, "failed to get import job")
 		return
 	}
 	writeJSON(w, http.StatusOK, job)
@@ -89,7 +87,8 @@ func (s *Server) handleGetImportJob(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListConversations(w http.ResponseWriter, r *http.Request) {
 	convs, err := s.store.ListConversations(r.Context())
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		log.Printf("list-conversations: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list conversations"})
 		return
 	}
 	writeJSON(w, http.StatusOK, convs)
@@ -99,11 +98,7 @@ func (s *Server) handleGetConversation(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	conv, err := s.store.GetConversation(r.Context(), id)
 	if err != nil {
-		status := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "not found") {
-			status = http.StatusNotFound
-		}
-		writeJSON(w, status, map[string]string{"error": err.Error()})
+		writeResourceError(w, "get-conversation", err, "failed to get conversation")
 		return
 	}
 	writeJSON(w, http.StatusOK, conv)
@@ -116,7 +111,8 @@ func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request) {
 
 	msgs, err := s.store.GetMessages(r.Context(), convID, limit, offset)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		log.Printf("get-messages: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to get messages"})
 		return
 	}
 

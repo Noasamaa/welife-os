@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -17,7 +18,8 @@ var ruleSeq uint64
 func (s *Server) handlePendingReminders(w http.ResponseWriter, r *http.Request) {
 	reminders, err := s.reminderService.ListPending(r.Context())
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		log.Printf("pending-reminders: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list reminders"})
 		return
 	}
 	if reminders == nil {
@@ -30,7 +32,8 @@ func (s *Server) handlePendingReminders(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleMarkReminderRead(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := s.reminderService.MarkRead(r.Context(), id); err != nil {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+		log.Printf("mark-reminder-read: %v", err)
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "reminder not found"})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "read"})
@@ -39,7 +42,8 @@ func (s *Server) handleMarkReminderRead(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleDismissReminder(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := s.reminderService.Dismiss(r.Context(), id); err != nil {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+		log.Printf("dismiss-reminder: %v", err)
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "reminder not found"})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "dismissed"})
@@ -48,7 +52,8 @@ func (s *Server) handleDismissReminder(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListReminderRules(w http.ResponseWriter, r *http.Request) {
 	rules, err := s.store.ListReminderRules(r.Context())
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		log.Printf("list-reminder-rules: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list rules"})
 		return
 	}
 	if rules == nil {
@@ -94,12 +99,13 @@ func (s *Server) handleCreateReminderRule(w http.ResponseWriter, r *http.Request
 		Enabled:         true,
 	}
 	if err := reminder.ValidateRule(rule); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid rule configuration"})
 		return
 	}
 
 	if err := s.store.CreateReminderRule(r.Context(), rule); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		log.Printf("create-reminder-rule: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create rule"})
 		return
 	}
 
@@ -123,7 +129,8 @@ func (s *Server) handleUpdateReminderRule(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := s.store.UpdateReminderRule(r.Context(), id, *req.Enabled); err != nil {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+		log.Printf("update-reminder-rule: %v", err)
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "rule not found"})
 		return
 	}
 
@@ -133,7 +140,8 @@ func (s *Server) handleUpdateReminderRule(w http.ResponseWriter, r *http.Request
 func (s *Server) handleDeleteReminderRule(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := s.store.DeleteReminderRule(r.Context(), id); err != nil {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+		log.Printf("delete-reminder-rule: %v", err)
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "rule not found"})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})

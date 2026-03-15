@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/welife-os/welife-os/engine/internal/report"
@@ -31,11 +30,7 @@ func (s *Server) handleGenerateReport(w http.ResponseWriter, r *http.Request) {
 
 	reportID, taskID, err := s.reportGenerator.Generate(r.Context(), req)
 	if err != nil {
-		status := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "not found") {
-			status = http.StatusNotFound
-		}
-		writeJSON(w, status, map[string]string{"error": err.Error()})
+		writeResourceError(w, "generate-report", err, "failed to generate report")
 		return
 	}
 
@@ -48,7 +43,8 @@ func (s *Server) handleGenerateReport(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListReports(w http.ResponseWriter, r *http.Request) {
 	reports, err := s.reportGenerator.ListReports(r.Context())
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		log.Printf("list-reports: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list reports"})
 		return
 	}
 	if reports == nil {
@@ -62,11 +58,7 @@ func (s *Server) handleGetReport(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	rpt, err := s.reportGenerator.GetReport(r.Context(), id)
 	if err != nil {
-		status := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "not found") {
-			status = http.StatusNotFound
-		}
-		writeJSON(w, status, map[string]string{"error": err.Error()})
+		writeResourceError(w, "get-report", err, "failed to get report")
 		return
 	}
 	writeJSON(w, http.StatusOK, rpt)
@@ -75,11 +67,7 @@ func (s *Server) handleGetReport(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDeleteReport(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := s.reportGenerator.DeleteReport(r.Context(), id); err != nil {
-		status := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "not found") {
-			status = http.StatusNotFound
-		}
-		writeJSON(w, status, map[string]string{"error": err.Error()})
+		writeResourceError(w, "delete-report", err, "failed to delete report")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
@@ -89,23 +77,21 @@ func (s *Server) handleExportReportHTML(w http.ResponseWriter, r *http.Request) 
 	id := chi.URLParam(r, "id")
 	rpt, err := s.reportGenerator.GetReport(r.Context(), id)
 	if err != nil {
-		status := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "not found") {
-			status = http.StatusNotFound
-		}
-		writeJSON(w, status, map[string]string{"error": err.Error()})
+		writeResourceError(w, "export-html", err, "failed to get report")
 		return
 	}
 
 	content, err := parseReportContent(rpt)
 	if err != nil {
-		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		log.Printf("export-html: parse content: %v", err)
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "report content is not ready"})
 		return
 	}
 
 	html, err := s.renderer.RenderHTML(content)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to render HTML: " + err.Error()})
+		log.Printf("export-html: render: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to render HTML"})
 		return
 	}
 
@@ -117,29 +103,28 @@ func (s *Server) handleExportReportPDF(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	rpt, err := s.reportGenerator.GetReport(r.Context(), id)
 	if err != nil {
-		status := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "not found") {
-			status = http.StatusNotFound
-		}
-		writeJSON(w, status, map[string]string{"error": err.Error()})
+		writeResourceError(w, "export-pdf", err, "failed to get report")
 		return
 	}
 
 	content, err := parseReportContent(rpt)
 	if err != nil {
-		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		log.Printf("export-pdf: parse content: %v", err)
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "report content is not ready"})
 		return
 	}
 
 	html, err := s.renderer.RenderHTML(content)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to render HTML: " + err.Error()})
+		log.Printf("export-pdf: render HTML: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to render HTML"})
 		return
 	}
 
 	pdf, err := s.renderer.RenderPDF(r.Context(), html)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to render PDF: " + err.Error()})
+		log.Printf("export-pdf: render PDF: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to render PDF"})
 		return
 	}
 
