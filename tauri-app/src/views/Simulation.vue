@@ -192,7 +192,7 @@ function stopSessionPolling() {
 .page-header h2 { margin: 0; }
 .subtitle { color: var(--color-text-secondary, #666); margin: 4px 0 0; font-size: 14px; }
 .card { background: var(--color-bg-card, #fff); border: 1px solid var(--color-border, #e0e0e0); border-radius: 10px; padding: 20px; }
-.error-banner { background: #fde8e8; border-color: #e74c3c; color: #c0392b; }
+.error-banner { background: var(--color-danger-bg); border-color: var(--color-danger); color: var(--color-danger); }
 .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .panel-header h3 { margin: 0; }
 .empty { text-align: center; padding: 16px; color: var(--color-text-secondary, #888); font-size: 14px; }
@@ -202,26 +202,26 @@ function stopSessionPolling() {
 .btn-secondary { padding: 6px 14px; background: transparent; border: 1px solid var(--color-border, #ddd); border-radius: 6px; cursor: pointer; font-size: 13px; }
 
 .profile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
-.profile-card { border: 1px solid #eee; border-radius: 8px; padding: 12px; }
+.profile-card { border: 1px solid var(--color-border); border-radius: 8px; padding: 12px; }
 .profile-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
-.profile-detail { font-size: 12px; color: #888; }
+.profile-detail { font-size: 12px; color: var(--color-text-muted); }
 
 .fork-form { display: flex; gap: 12px; }
 .form-input { flex: 1; padding: 8px 12px; border: 1px solid var(--color-border, #ddd); border-radius: 6px; font-size: 14px; }
 
 .session-list { display: flex; flex-direction: column; gap: 8px; }
-.session-item { padding: 12px; border: 1px solid #eee; border-radius: 6px; cursor: pointer; }
-.session-item:hover { background: #f8f8f8; }
-.session-item.active { border-color: var(--color-primary, #4a90d9); background: #f0f7ff; }
+.session-item { padding: 12px; border: 1px solid var(--color-border); border-radius: 6px; cursor: pointer; }
+.session-item:hover { background: var(--color-bg-secondary); }
+.session-item.active { border-color: var(--color-primary, #4a90d9); background: var(--color-primary-bg); }
 .session-info { display: flex; justify-content: space-between; align-items: center; }
 .fork-text { font-size: 14px; }
-.session-meta { font-size: 12px; color: #888; margin-top: 4px; }
+.session-meta { font-size: 12px; color: var(--color-text-muted); margin-top: 4px; }
 .status-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
-.status-running { background: #e8f4fd; color: #2980b9; }
-.status-completed { background: #e8f8ef; color: #27ae60; }
-.status-failed { background: #fde8e8; color: #e74c3c; }
+.status-running { background: var(--color-info-bg); color: var(--color-info); }
+.status-completed { background: var(--color-success-bg); color: var(--color-success); }
+.status-failed { background: var(--color-danger-bg); color: var(--color-danger); }
 
-.narrative-box { margin-top: 16px; background: #f8f9fa; border-radius: 8px; padding: 16px; }
+.narrative-box { margin-top: 16px; background: var(--color-bg-secondary); border-radius: 8px; padding: 16px; }
 .narrative-box h4 { margin: 0 0 8px; font-size: 14px; }
 .narrative-box p { margin: 0; font-size: 14px; line-height: 1.7; white-space: pre-wrap; }
 

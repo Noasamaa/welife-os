@@ -21,7 +21,7 @@ defineEmits<{ click: [] }>();
   position: absolute;
   top: -2px;
   right: 0;
-  background: #e74c3c;
+  background: var(--color-danger);
   color: white;
   font-size: 10px;
   font-weight: 600;

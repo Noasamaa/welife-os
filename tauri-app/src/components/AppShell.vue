@@ -8,7 +8,10 @@
           <h1>WeLife OS</h1>
           <p class="subtitle">把散落的对话，整理成可以行动的人生洞察。</p>
         </div>
-        <StatusBar class="status" />
+        <div class="header-actions">
+          <ReminderBell :count="pendingCount" @click="$router.push('/timeline')" />
+          <StatusBar class="status" />
+        </div>
       </header>
       <section class="page">
         <slot />
@@ -20,6 +23,14 @@
 <script setup lang="ts">
 import SidebarNav from "./SidebarNav.vue";
 import StatusBar from "./StatusBar.vue";
+import ReminderBell from "./ReminderBell.vue";
+import { useReminder } from "../composables/useReminder";
+import { computed } from "vue";
+
+const { pending, startPolling } = useReminder();
+startPolling();
+
+const pendingCount = computed(() => pending.value.length);
 </script>
 
 <style scoped>
@@ -72,6 +83,12 @@ h1 {
 
 .status {
   min-width: 240px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 @media (max-width: 900px) {
