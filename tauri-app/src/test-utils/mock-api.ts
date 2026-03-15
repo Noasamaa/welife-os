@@ -8,6 +8,7 @@ import * as api from "../services/api";
 export function mockAllApi() {
   return {
     // System
+    getAPIBaseURL: vi.spyOn(api, "getAPIBaseURL"),
     fetchSystemStatus: vi.spyOn(api, "fetchSystemStatus"),
     fetchLLMConfig: vi.spyOn(api, "fetchLLMConfig"),
     updateLLMConfig: vi.spyOn(api, "updateLLMConfig"),
@@ -33,6 +34,7 @@ export function mockAllApi() {
     fetchReports: vi.spyOn(api, "fetchReports"),
     fetchReport: vi.spyOn(api, "fetchReport"),
     deleteReport: vi.spyOn(api, "deleteReport"),
+    fetchReportExportBlob: vi.spyOn(api, "fetchReportExportBlob"),
 
     // Coach
     generateActionPlan: vi.spyOn(api, "generateActionPlan"),

@@ -68,6 +68,35 @@ func doJSON(t *testing.T, app *server.Server, method, path string, body any) *ht
 	return rec
 }
 
+func doJSONWithHeader(t *testing.T, app *server.Server, method, path string, body any, headerKey, headerValue string) *httptest.ResponseRecorder {
+	t.Helper()
+	var reader io.Reader
+	switch v := body.(type) {
+	case nil:
+	case string:
+		reader = strings.NewReader(v)
+	case []byte:
+		reader = bytes.NewReader(v)
+	case io.Reader:
+		reader = v
+	default:
+		data, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("doJSONWithHeader: marshal body: %v", err)
+		}
+		reader = bytes.NewReader(data)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(method, path, reader)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	req.Header.Set(headerKey, headerValue)
+	app.Handler().ServeHTTP(rec, req)
+	return rec
+}
+
 // assertStatus fails the test if the recorder's status code doesn't match want.
 func assertStatus(t *testing.T, rec *httptest.ResponseRecorder, want int) {
 	t.Helper()

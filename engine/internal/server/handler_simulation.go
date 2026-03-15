@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/welife-os/welife-os/engine/internal/simulation"
@@ -16,10 +17,24 @@ func (s *Server) handleBuildProfiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	taskID, err := s.simEngine.BuildAllProfilesAsync(r.Context())
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
+	var req struct {
+		ConversationID string `json:"conversation_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		return
+	}
+
+	if strings.TrimSpace(req.ConversationID) == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "conversation_id is required"})
+		return
+	}
+
+	taskID, err := s.simEngine.BuildAllProfilesAsync(r.Context(), req.ConversationID)
 	if err != nil {
-		log.Printf("build-profiles: %v", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to start profile build"})
+		writeResourceError(w, "build-profiles", err, "failed to start profile build")
 		return
 	}
 
@@ -30,7 +45,13 @@ func (s *Server) handleBuildProfiles(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListProfiles(w http.ResponseWriter, r *http.Request) {
-	profiles, err := s.store.ListPersonProfiles(r.Context())
+	conversationID := strings.TrimSpace(r.URL.Query().Get("conversation_id"))
+	if conversationID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "conversation_id is required"})
+		return
+	}
+
+	profiles, err := s.store.ListPersonProfilesByConversation(r.Context(), conversationID)
 	if err != nil {
 		log.Printf("list-profiles: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list profiles"})
@@ -56,6 +77,10 @@ func (s *Server) handleRunSimulation(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 		return
 	}
+	if strings.TrimSpace(config.ConversationID) == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "conversation_id is required"})
+		return
+	}
 	if config.ForkPoint.Description == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "fork_point.description is required"})
 		return
@@ -79,7 +104,13 @@ func (s *Server) handleListSimulations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessions, err := s.simEngine.ListSessions(r.Context())
+	conversationID := strings.TrimSpace(r.URL.Query().Get("conversation_id"))
+	if conversationID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "conversation_id is required"})
+		return
+	}
+
+	sessions, err := s.simEngine.ListSessions(r.Context(), conversationID)
 	if err != nil {
 		log.Printf("list-simulations: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list simulations"})
@@ -99,10 +130,19 @@ func (s *Server) handleGetSimulation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
+	conversationID := strings.TrimSpace(r.URL.Query().Get("conversation_id"))
+	if conversationID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "conversation_id is required"})
+		return
+	}
 
 	session, err := s.simEngine.GetSession(r.Context(), id)
 	if err != nil {
 		writeResourceError(w, "get-simulation", err, "failed to get simulation")
+		return
+	}
+	if session.ConversationID != conversationID {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "resource not found"})
 		return
 	}
 

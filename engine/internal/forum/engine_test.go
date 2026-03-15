@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +16,33 @@ import (
 	"github.com/welife-os/welife-os/engine/internal/storage"
 	"github.com/welife-os/welife-os/engine/internal/task"
 )
+
+type scopeProbeAgent struct{}
+
+func (scopeProbeAgent) Name() string { return "scope_probe" }
+
+func (scopeProbeAgent) Analyze(_ context.Context, input agent.AnalysisInput) (agent.AnalysisOutput, error) {
+	return agent.AnalysisOutput{
+		AgentName: "scope_probe",
+		Summary:   "entities=" + strconv.Itoa(len(input.Entities)) + ",relationships=" + strconv.Itoa(len(input.Relationships)),
+		Details: []agent.Finding{{
+			Type:       "scope",
+			Title:      "scope",
+			Content:    "probe",
+			Confidence: 1,
+		}},
+	}, nil
+}
+
+func (scopeProbeAgent) Debate(_ context.Context, state agent.DebateState) (agent.ForumMessage, error) {
+	return agent.ForumMessage{
+		AgentName:  "scope_probe",
+		Round:      state.Round,
+		Stance:     "scope",
+		Content:    "scoped",
+		Confidence: 1,
+	}, nil
+}
 
 func newMockOllamaServer(t *testing.T) *httptest.Server {
 	t.Helper()
@@ -250,6 +278,88 @@ func TestListSessions(t *testing.T) {
 	}
 	if len(sessions) != 1 {
 		t.Fatalf("expected 1 session, got %d", len(sessions))
+	}
+}
+
+func TestRunDebateScopesEntitiesAndRelationshipsToConversation(t *testing.T) {
+	ollamaServer := newMockOllamaServer(t)
+	defer ollamaServer.Close()
+
+	llmClient, err := llm.New(llm.Config{
+		BaseURL: ollamaServer.URL,
+		Model:   "test",
+	})
+	if err != nil {
+		t.Fatalf("create LLM client: %v", err)
+	}
+
+	store, err := storage.Open(context.Background(), storage.Config{
+		Path: t.TempDir() + "/forum_scope_test.db",
+		Key:  "test-key",
+	})
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer func() { _ = store.Close() }()
+
+	ctx := context.Background()
+	for _, conv := range []storage.Conversation{
+		{ID: "conv_a", Platform: "test", ConversationType: "private", Title: "A", MessageCount: 1},
+		{ID: "conv_b", Platform: "test", ConversationType: "private", Title: "B", MessageCount: 1},
+	} {
+		if err := store.SaveConversation(ctx, conv); err != nil {
+			t.Fatalf("save conversation: %v", err)
+		}
+	}
+	if err := store.SaveMessages(ctx, []storage.StoredMessage{
+		{ID: "msg_a", ConversationID: "conv_a", Platform: "test", SenderID: "u1", SenderName: "Alice", Content: "hello", MessageType: "text", Timestamp: "2024-01-01T10:00:00Z"},
+	}); err != nil {
+		t.Fatalf("save messages: %v", err)
+	}
+	if err := store.SaveEntities(ctx, []storage.Entity{
+		{ID: "entity_a_1", Type: "person", Name: "Alice", SourceConversation: "conv_a"},
+		{ID: "entity_a_2", Type: "person", Name: "Bob", SourceConversation: "conv_a"},
+		{ID: "entity_b_1", Type: "person", Name: "Mallory", SourceConversation: "conv_b"},
+	}); err != nil {
+		t.Fatalf("save entities: %v", err)
+	}
+	if err := store.SaveRelationships(ctx, []storage.Relationship{
+		{ID: "rel_a", SourceEntityID: "entity_a_1", TargetEntityID: "entity_a_2", Type: "friend", Weight: 1},
+		{ID: "rel_b", SourceEntityID: "entity_b_1", TargetEntityID: "entity_a_1", Type: "watching", Weight: 1},
+	}); err != nil {
+		t.Fatalf("save relationships: %v", err)
+	}
+
+	taskMgr := task.NewManager(1)
+	defer func() { _ = taskMgr.Close() }()
+
+	engine := forum.NewEngine([]agent.Agent{scopeProbeAgent{}}, forum.NewModerator(llmClient), store, taskMgr)
+	sessionID, taskID, err := engine.RunDebate(ctx, "conv_a")
+	if err != nil {
+		t.Fatalf("run debate: %v", err)
+	}
+
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		info, ok := taskMgr.Status(taskID)
+		if ok && (info.Status == task.StatusSucceeded || info.Status == task.StatusFailed) {
+			if info.Status == task.StatusFailed {
+				t.Fatalf("debate failed: %s", info.Error)
+			}
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	msgs, err := store.GetForumMessages(ctx, sessionID)
+	if err != nil {
+		t.Fatalf("get forum messages: %v", err)
+	}
+	if len(msgs) == 0 {
+		t.Fatal("expected saved forum messages")
+	}
+	if !strings.Contains(msgs[0].Content, "entities=2,relationships=1") {
+		t.Fatalf("unexpected scope summary: %q", msgs[0].Content)
 	}
 }
 

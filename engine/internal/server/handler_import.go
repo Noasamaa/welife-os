@@ -1,9 +1,7 @@
 package server
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 
@@ -20,6 +18,13 @@ func (s *Server) handleImportUpload(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid multipart form or file too large"})
 		return
 	}
+	if r.MultipartForm != nil {
+		defer func() {
+			if err := r.MultipartForm.RemoveAll(); err != nil {
+				log.Printf("import-upload: cleanup multipart form: %v", err)
+			}
+		}()
+	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
@@ -27,13 +32,6 @@ func (s *Server) handleImportUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
-
-	// Read into memory for ReadSeeker
-	data, err := io.ReadAll(file)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "reading file"})
-		return
-	}
 
 	formatStr := r.FormValue("format")
 	selfName := r.FormValue("self_name")
@@ -50,7 +48,7 @@ func (s *Server) handleImportUpload(w http.ResponseWriter, r *http.Request) {
 	req := importer.ImportRequest{
 		FileName: header.Filename,
 		Format:   format,
-		Data:     bytes.NewReader(data),
+		Data:     file,
 		Options:  opts,
 	}
 
@@ -125,6 +123,9 @@ func (s *Server) handleDeleteConversation(w http.ResponseWriter, r *http.Request
 func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request) {
 	convID := chi.URLParam(r, "id")
 	limit := queryInt(r, "limit", 50)
+	if limit > maxMessagePageSize {
+		limit = maxMessagePageSize
+	}
 	offset := queryInt(r, "offset", 0)
 
 	msgs, err := s.store.GetMessages(r.Context(), convID, limit, offset)

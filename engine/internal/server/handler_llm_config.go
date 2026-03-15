@@ -2,10 +2,11 @@ package server
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/welife-os/welife-os/engine/internal/llm"
 )
 
 type llmConfigResponse struct {
@@ -109,43 +110,61 @@ func (s *Server) handleUpdateLLMConfig(w http.ResponseWriter, r *http.Request) {
 	// Validate base_url.
 	if req.BaseURL != nil {
 		parsed, err := url.Parse(*req.BaseURL)
-		if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "base_url must be a valid URL"})
 			return
 		}
 	}
 
-	// Save each provided field.
-	saves := map[string]*string{
-		"llm_provider":        req.Provider,
-		"llm_base_url":        req.BaseURL,
-		"llm_model":           req.Model,
-		"llm_embedding_model": req.EmbeddingModel,
-	}
-
-	for key, val := range saves {
-		if val != nil {
-			if err := s.store.SaveSetting(ctx, key, *val); err != nil {
-				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save setting"})
-				return
-			}
-		}
-	}
-
-	// Handle api_key separately: skip if empty or looks like a masked value.
-	if req.APIKey != nil && *req.APIKey != "" && !isMaskedKey(*req.APIKey) {
-		if err := s.store.SaveSetting(ctx, "llm_api_key", *req.APIKey); err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save api key"})
-			return
-		}
-	}
-
-	// Hot-swap the LLM client.
-	if err := s.swapLLMClient(ctx); err != nil {
-		log.Printf("llm-config: swap failed: %v", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "config saved but failed to apply"})
+	currentSettings, err := s.store.GetSettings(ctx, llmSettingKeys)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to read existing settings"})
 		return
 	}
 
+	nextSettings := cloneSettings(currentSettings)
+	persistedPatch := make(map[string]string, 5)
+
+	assignPatchSetting(nextSettings, persistedPatch, "llm_provider", req.Provider)
+	assignPatchSetting(nextSettings, persistedPatch, "llm_base_url", req.BaseURL)
+	assignPatchSetting(nextSettings, persistedPatch, "llm_model", req.Model)
+	assignPatchSetting(nextSettings, persistedPatch, "llm_embedding_model", req.EmbeddingModel)
+
+	if req.APIKey != nil && *req.APIKey != "" && !isMaskedKey(*req.APIKey) {
+		nextSettings["llm_api_key"] = *req.APIKey
+		persistedPatch["llm_api_key"] = *req.APIKey
+	}
+
+	candidateCfg := applySettingsToLLMConfig(baseLLMConfig(s.config), nextSettings)
+	newClient, err := llm.NewClient(candidateCfg)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "invalid llm config: " + err.Error(),
+		})
+		return
+	}
+
+	if err := s.store.SaveSettings(ctx, persistedPatch); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save setting"})
+		return
+	}
+
+	s.llmClient.Swap(newClient)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func cloneSettings(settings map[string]string) map[string]string {
+	cloned := make(map[string]string, len(settings))
+	for key, value := range settings {
+		cloned[key] = value
+	}
+	return cloned
+}
+
+func assignPatchSetting(settings map[string]string, persistedPatch map[string]string, key string, value *string) {
+	if value == nil {
+		return
+	}
+	settings[key] = *value
+	persistedPatch[key] = *value
 }

@@ -197,6 +197,7 @@ type PersonProfile struct {
 // SimulationSession represents a parallel life simulation run.
 type SimulationSession struct {
 	ID                    string `json:"id"`
+	ConversationID        string `json:"conversation_id"`
 	TaskID                string `json:"task_id"`
 	ForkDescription       string `json:"fork_description"`
 	Status                string `json:"status"`

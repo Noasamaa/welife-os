@@ -6,48 +6,42 @@
       暂无图谱数据，请先导入对话并构建图谱。
     </div>
     <template v-else>
-      <div class="stats">
-        <span class="stat">{{ overview.stats.entity_count }} 个实体</span>
-        <span class="stat">{{ overview.stats.relationship_count }} 条关系</span>
-        <span v-for="(count, type) in overview.stats.entity_types" :key="type" class="tag">
-          {{ type }}: {{ count }}
-        </span>
+      <div class="stats-bar">
+        <div class="stats">
+          <span class="stat">{{ overview.stats.entity_count }} 个实体</span>
+          <span class="stat">{{ overview.stats.relationship_count }} 条关系</span>
+          <span v-for="(count, type) in overview.stats.entity_types" :key="type" class="tag">
+            {{ type }}: {{ count }}
+          </span>
+        </div>
+        <div class="controls">
+          <button class="ctrl-btn" title="放大" @click="controls.zoomIn()">+</button>
+          <button class="ctrl-btn" title="缩小" @click="controls.zoomOut()">-</button>
+          <button class="ctrl-btn" title="重置视图" @click="controls.resetView()">&#8962;</button>
+        </div>
       </div>
-      <svg ref="svgEl" class="canvas" :viewBox="viewBox">
-        <!-- edges -->
-        <line
-          v-for="edge in overview.edges"
-          :key="edge.id"
-          :x1="pos(edge.source).x"
-          :y1="pos(edge.source).y"
-          :x2="pos(edge.target).x"
-          :y2="pos(edge.target).y"
-          class="edge"
-          :stroke-width="Math.max(1, edge.weight)"
+      <div class="graph-canvas-wrapper">
+        <div ref="containerRef" class="pixi-container" />
+        <GraphFilterPanel
+          v-if="overview"
+          :filters="controls.filters"
+          :entity-types="overview.stats.entity_types"
+          :on-refresh="() => controls.refresh()"
         />
-        <!-- nodes -->
-        <g v-for="node in overview.nodes" :key="node.id">
-          <circle
-            :cx="pos(node.id).x"
-            :cy="pos(node.id).y"
-            :r="14"
-            :class="['node', node.type]"
-          />
-          <text
-            :x="pos(node.id).x"
-            :y="pos(node.id).y + 28"
-            text-anchor="middle"
-            class="label"
-          >{{ node.name }}</text>
-        </g>
-      </svg>
+      </div>
+      <div v-if="controls.selectedNode.value" class="node-info">
+        <span class="node-info-label">选中:</span>
+        <span class="node-info-name">{{ selectedNodeName }}</span>
+      </div>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { ref, watch, nextTick, toRef, computed } from "vue";
 import type { GraphOverview } from "../types/import";
+import { usePixiGraph } from "../composables/usePixiGraph";
+import GraphFilterPanel from "./GraphFilterPanel.vue";
 
 const props = defineProps<{
   overview: GraphOverview | null;
@@ -55,31 +49,50 @@ const props = defineProps<{
   error: string | null;
 }>();
 
-// Simple circular layout
-const positions = computed(() => {
-  const map: Record<string, { x: number; y: number }> = {};
-  const nodes = props.overview?.nodes ?? [];
-  const cx = 300, cy = 300, r = Math.min(250, nodes.length * 30);
-  nodes.forEach((n, i) => {
-    const angle = (2 * Math.PI * i) / nodes.length - Math.PI / 2;
-    map[n.id] = {
-      x: cx + r * Math.cos(angle),
-      y: cy + r * Math.sin(angle),
-    };
-  });
-  return map;
+const emit = defineEmits<{
+  (e: "node-click", payload: { id: string; type: string; name: string }): void;
+}>();
+
+const containerRef = ref<HTMLElement | null>(null);
+
+const controls = usePixiGraph(
+  containerRef,
+  toRef(props, "overview"),
+  (id, type, name) => {
+    emit("node-click", { id, type, name });
+  },
+);
+
+const selectedNodeName = computed(() => {
+  const nodeId = controls.selectedNode.value;
+  if (!nodeId || !props.overview) return "";
+  const node = props.overview.nodes.find((n) => n.id === nodeId);
+  return node?.name ?? nodeId;
 });
 
-const viewBox = computed(() => "0 0 600 600");
+watch(
+  () => props.overview,
+  async (newOverview) => {
+    if (newOverview && newOverview.nodes.length > 0) {
+      await nextTick();
+      controls.reinit();
+    }
+  },
+);
 
-function pos(id: string) {
-  return positions.value[id] ?? { x: 300, y: 300 };
-}
+watch(containerRef, async (el) => {
+  if (el && props.overview && props.overview.nodes.length > 0) {
+    await nextTick();
+    controls.reinit();
+  }
+});
 </script>
 
 <style scoped>
 .graph-view {
   min-height: 300px;
+  display: flex;
+  flex-direction: column;
 }
 
 .center {
@@ -92,11 +105,18 @@ function pos(id: string) {
   color: #c0392b;
 }
 
+.stats-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
 .stats {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  align-items: center;
 }
 
 .stat {
@@ -112,32 +132,58 @@ function pos(id: string) {
   color: #2d6a4f;
 }
 
-.canvas {
+.controls {
+  display: flex;
+  gap: 4px;
+}
+
+.ctrl-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ccc;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.graph-canvas-wrapper {
+  position: relative;
+}
+
+.pixi-container {
   width: 100%;
-  max-height: 500px;
-  background: rgba(0, 0, 0, 0.02);
+  height: 500px;
   border-radius: 8px;
+  background: #1a1a2e;
+  overflow: hidden;
+  position: relative;
 }
 
-.edge {
-  stroke: #b7c9c1;
-  stroke-opacity: 0.6;
+.node-info {
+  margin-top: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
 }
 
-.node {
-  fill: #2d6a4f;
-  stroke: #fff;
-  stroke-width: 2;
+.node-info-label {
+  color: #888;
+  margin-right: 6px;
 }
 
-.node.person { fill: #2d6a4f; }
-.node.event { fill: #e67e22; }
-.node.topic { fill: #3498db; }
-.node.promise { fill: #9b59b6; }
-.node.place { fill: #e74c3c; }
-
-.label {
-  font-size: 11px;
-  fill: #333;
+.node-info-name {
+  font-weight: 600;
+  color: #e0e0e0;
 }
 </style>

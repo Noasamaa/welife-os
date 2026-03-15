@@ -1,5 +1,10 @@
 import { ref, computed } from "vue";
-import type { Report, ReportContent, ReportType } from "../types/report";
+import {
+  type Report,
+  type ReportContent,
+  type ReportType,
+  sanitizeReportContent,
+} from "../types/report";
 import {
   generateReport,
   fetchReports,
@@ -17,7 +22,7 @@ export function useReport() {
   const parsedContent = computed<ReportContent | null>(() => {
     if (!currentReport.value || !currentReport.value.content) return null;
     try {
-      return JSON.parse(currentReport.value.content) as ReportContent;
+      return sanitizeReportContent(JSON.parse(currentReport.value.content));
     } catch {
       return null;
     }

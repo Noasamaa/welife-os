@@ -7,11 +7,30 @@
 
     <div v-if="error" class="card error-banner">{{ error }}</div>
 
+    <div class="card">
+      <div class="panel-header">
+        <h3>选择对话</h3>
+      </div>
+      <select v-model="selectedConversation" class="form-select">
+        <option value="">选择对话...</option>
+        <option
+          v-for="conv in conversations"
+          :key="conv.id"
+          :value="conv.id"
+        >
+          {{ conv.title || conv.id }} ({{ conv.platform }}, {{ conv.message_count }} 条)
+        </option>
+      </select>
+      <div v-if="!selectedConversation" class="empty selection-tip">
+        先选择一个对话，再构建人物画像或启动模拟。
+      </div>
+    </div>
+
     <!-- Profiles -->
     <div class="card">
       <div class="panel-header">
         <h3>人物画像</h3>
-        <button class="btn-secondary" :disabled="building" @click="handleBuildProfiles">
+        <button class="btn-secondary" :disabled="building || !selectedConversation" @click="handleBuildProfiles">
           {{ building ? '构建中...' : '构建画像' }}
         </button>
       </div>
@@ -36,7 +55,7 @@
         />
         <button
           class="btn-primary"
-          :disabled="!forkDescription || running"
+          :disabled="!selectedConversation || !forkDescription || running"
           @click="handleRun"
         >
           {{ running ? '模拟中...' : '开始模拟' }}
@@ -48,7 +67,7 @@
     <div class="card">
       <div class="panel-header">
         <h3>模拟历史</h3>
-        <button class="btn-secondary" @click="loadSessions">刷新</button>
+        <button class="btn-secondary" @click="handleRefreshSessions">刷新</button>
       </div>
       <div v-if="sessions.length === 0 && !loading" class="empty">暂无模拟记录。</div>
       <div class="session-list">
@@ -57,7 +76,7 @@
           :key="s.id"
           class="session-item"
           :class="{ active: currentSession?.session.id === s.id }"
-          @click="loadSession(s.id)"
+          @click="handleSelectSession(s.id)"
         >
           <div class="session-info">
             <span class="fork-text">{{ s.fork_description }}</span>
@@ -97,6 +116,8 @@
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useSimulation } from "../composables/useSimulation";
 import SimulationGraph from "../components/SimulationGraph.vue";
+import { fetchConversations } from "../services/api";
+import type { Conversation } from "../types/import";
 
 const {
   profiles, sessions, currentSession,
@@ -104,13 +125,15 @@ const {
   loadProfiles, buildAllProfiles, loadSessions, loadSession, startSimulation,
 } = useSimulation();
 
+const conversations = ref<Conversation[]>([]);
+const selectedConversation = ref("");
 const forkDescription = ref("");
 const profileStatus = ref("");
 let profilePollHandle: ReturnType<typeof setInterval> | null = null;
 let sessionPollHandle: ReturnType<typeof setInterval> | null = null;
 
-onMounted(async () => {
-  await Promise.all([loadProfiles(), loadSessions()]);
+onMounted(() => {
+  void loadConversationOptions();
 });
 
 onUnmounted(() => {
@@ -126,22 +149,36 @@ watch(
       return;
     }
     sessionPollHandle = setInterval(() => {
-      if (!currentSession.value) {
+      if (!currentSession.value || !selectedConversation.value) {
         stopSessionPolling();
         return;
       }
-      void Promise.all([loadSessions(), loadSession(currentSession.value.session.id)]);
+      void Promise.all([
+        loadSessions(selectedConversation.value),
+        loadSession(currentSession.value.session.id, selectedConversation.value),
+      ]);
     }, 2000);
   },
 );
 
+watch(selectedConversation, (conversationID) => {
+  stopProfilePolling();
+  stopSessionPolling();
+  profileStatus.value = "";
+  void Promise.all([
+    loadProfiles(conversationID),
+    loadSessions(conversationID),
+  ]);
+});
+
 async function handleRun() {
-  if (!forkDescription.value) return;
-  await startSimulation(forkDescription.value, [], {});
+  if (!selectedConversation.value || !forkDescription.value) return;
+  await startSimulation(selectedConversation.value, forkDescription.value, [], {});
 }
 
 async function handleBuildProfiles() {
-  const result = await buildAllProfiles();
+  if (!selectedConversation.value) return;
+  const result = await buildAllProfiles(selectedConversation.value);
   if (!result) return;
 
   profileStatus.value = "画像构建任务已提交，正在后台刷新...";
@@ -162,7 +199,11 @@ function startProfilePolling() {
   let attempts = 0;
   profilePollHandle = setInterval(async () => {
     attempts += 1;
-    await loadProfiles();
+    if (!selectedConversation.value) {
+      stopProfilePolling();
+      return;
+    }
+    await loadProfiles(selectedConversation.value);
     if (profiles.value.length > 0 || attempts >= 10) {
       profileStatus.value = profiles.value.length > 0
         ? "人物画像已刷新完成。"
@@ -177,6 +218,27 @@ function stopProfilePolling() {
     clearInterval(profilePollHandle);
     profilePollHandle = null;
   }
+}
+
+async function loadConversationOptions() {
+  try {
+    conversations.value = await fetchConversations();
+    if (!selectedConversation.value && conversations.value.length > 0) {
+      selectedConversation.value = conversations.value[0].id;
+    }
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : "加载对话失败";
+  }
+}
+
+async function handleRefreshSessions() {
+  if (!selectedConversation.value) return;
+  await loadSessions(selectedConversation.value);
+}
+
+async function handleSelectSession(id: string) {
+  if (!selectedConversation.value) return;
+  await loadSession(id, selectedConversation.value);
 }
 
 function stopSessionPolling() {
@@ -196,10 +258,12 @@ function stopSessionPolling() {
 .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .panel-header h3 { margin: 0; }
 .empty { text-align: center; padding: 16px; color: var(--color-text-secondary, #888); font-size: 14px; }
+.selection-tip { padding-top: 12px; }
 .status-note { margin-bottom: 12px; font-size: 13px; color: var(--color-text-secondary, #666); }
 .btn-primary { padding: 8px 20px; background: var(--color-primary, #4a90d9); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-secondary { padding: 6px 14px; background: transparent; border: 1px solid var(--color-border, #ddd); border-radius: 6px; cursor: pointer; font-size: 13px; }
+.form-select { width: 100%; padding: 8px 12px; border: 1px solid var(--color-border, #ddd); border-radius: 6px; font-size: 14px; background: var(--color-bg, #fff); }
 
 .profile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
 .profile-card { border: 1px solid var(--color-border); border-radius: 8px; padding: 12px; }

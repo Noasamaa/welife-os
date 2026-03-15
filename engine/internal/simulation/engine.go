@@ -37,21 +37,27 @@ func NewEngine(llmClient llm.LLMClient, store *storage.Store, tasks *task.Manage
 
 // RunSimulation starts an async simulation run. Returns the session ID and task ID.
 func (e *Engine) RunSimulation(ctx context.Context, config SimulationConfig) (string, string, error) {
+	if strings.TrimSpace(config.ConversationID) == "" {
+		return "", "", fmt.Errorf("conversation_id is required")
+	}
 	if config.Steps <= 0 {
 		config.Steps = 5
 	}
 	if config.ForkPoint.Description == "" {
 		return "", "", fmt.Errorf("fork_point description is required")
 	}
+	if _, err := e.store.GetConversation(ctx, config.ConversationID); err != nil {
+		return "", "", fmt.Errorf("conversation lookup: %w", err)
+	}
 
 	sessionID := fmt.Sprintf("sim_%d", time.Now().UnixMilli())
 
-	// Take original graph snapshot.
-	entities, err := e.store.ListEntities(ctx)
+	// 只对当前会话的图谱做快照，避免把其他会话的数据混入模拟上下文。
+	entities, err := e.store.ListEntitiesByConversation(ctx, config.ConversationID)
 	if err != nil {
 		return "", "", fmt.Errorf("listing entities: %w", err)
 	}
-	rels, err := e.store.ListRelationships(ctx)
+	rels, err := e.store.ListRelationshipsByConversation(ctx, config.ConversationID)
 	if err != nil {
 		return "", "", fmt.Errorf("listing relationships: %w", err)
 	}
@@ -63,6 +69,7 @@ func (e *Engine) RunSimulation(ctx context.Context, config SimulationConfig) (st
 
 	sess := storage.SimulationSession{
 		ID:                    sessionID,
+		ConversationID:        config.ConversationID,
 		ForkDescription:       config.ForkPoint.Description,
 		Status:                "running",
 		StepCount:             config.Steps,
@@ -87,8 +94,8 @@ func (e *Engine) GetSession(ctx context.Context, id string) (storage.SimulationS
 }
 
 // ListSessions returns all simulation sessions.
-func (e *Engine) ListSessions(ctx context.Context) ([]storage.SimulationSession, error) {
-	return e.store.ListSimulationSessions(ctx)
+func (e *Engine) ListSessions(ctx context.Context, conversationID string) ([]storage.SimulationSession, error) {
+	return e.store.ListSimulationSessionsByConversation(ctx, conversationID)
 }
 
 // GetSessionSteps returns all steps for a simulation session.
@@ -97,20 +104,37 @@ func (e *Engine) GetSessionSteps(ctx context.Context, sessionID string) ([]stora
 }
 
 // BuildAllProfilesAsync triggers async profile building for all person entities.
-func (e *Engine) BuildAllProfilesAsync(_ context.Context) (string, error) {
-	taskID := e.tasks.Submit("build_profiles", func(taskCtx context.Context) error {
-		_, err := e.profiler.BuildAllProfiles(taskCtx)
+func (e *Engine) BuildAllProfilesAsync(ctx context.Context, conversationID string) (string, error) {
+	if strings.TrimSpace(conversationID) == "" {
+		return "", fmt.Errorf("conversation_id is required")
+	}
+	if _, err := e.store.GetConversation(ctx, conversationID); err != nil {
+		return "", fmt.Errorf("conversation lookup: %w", err)
+	}
+
+	taskID := e.tasks.Submit("build_profiles:"+conversationID, func(taskCtx context.Context) error {
+		_, err := e.profiler.BuildAllProfiles(taskCtx, conversationID)
 		return err
 	})
 	return taskID, nil
 }
 
 func (e *Engine) executeSimulation(ctx context.Context, sessionID string, config SimulationConfig) error {
-	// 1. Clone graph.
-	clonedGraph := e.graphStore.Clone()
+	// 1. 仅克隆当前会话的图谱，避免跨会话边和节点进入模拟。
+	entities, err := e.store.ListEntitiesByConversation(ctx, config.ConversationID)
+	if err != nil {
+		e.failSession(ctx, sessionID, err)
+		return err
+	}
+	rels, err := e.store.ListRelationshipsByConversation(ctx, config.ConversationID)
+	if err != nil {
+		e.failSession(ctx, sessionID, err)
+		return err
+	}
+	clonedGraph := buildScopedGraph(entities, rels)
 
 	// 2. Load/build person profiles.
-	profiles, err := e.profiler.BuildAllProfiles(ctx)
+	profiles, err := e.profiler.BuildAllProfiles(ctx, config.ConversationID)
 	if err != nil {
 		e.failSession(ctx, sessionID, err)
 		return err
@@ -191,9 +215,9 @@ type stepResult struct {
 }
 
 type personReaction struct {
-	PersonName          string             `json:"person_name"`
-	Reaction            string             `json:"reaction"`
-	Actions             []string           `json:"actions"`
+	PersonName          string              `json:"person_name"`
+	Reaction            string              `json:"reaction"`
+	Actions             []string            `json:"actions"`
 	RelationshipChanges []relationshipDelta `json:"relationship_changes"`
 }
 
@@ -314,4 +338,15 @@ func (e *Engine) failSession(ctx context.Context, sessionID string, err error) {
 	if dbErr := e.store.UpdateSimulationSession(ctx, sessionID, "failed", err.Error(), "", 0); dbErr != nil {
 		log.Printf("simulation: failed to mark session %s as failed: %v", sessionID, dbErr)
 	}
+}
+
+func buildScopedGraph(entities []storage.Entity, relationships []storage.Relationship) *graph.GraphStore {
+	scoped := graph.NewGraphStore()
+	for _, entity := range entities {
+		scoped.AddNode(entity.ID)
+	}
+	for _, relationship := range relationships {
+		_ = scoped.AddEdge(relationship.SourceEntityID, relationship.TargetEntityID, relationship.Weight)
+	}
+	return scoped
 }

@@ -96,13 +96,13 @@ func (e *Engine) executeDebate(ctx context.Context, sessionID, conversationID st
 		return err
 	}
 
-	entities, err := e.store.ListEntities(ctx)
+	entities, err := e.store.ListEntitiesByConversation(ctx, conversationID)
 	if err != nil {
 		e.failSession(ctx, sessionID, err)
 		return err
 	}
 
-	relationships, err := e.store.ListRelationships(ctx)
+	relationships, err := e.store.ListRelationshipsByConversation(ctx, conversationID)
 	if err != nil {
 		e.failSession(ctx, sessionID, err)
 		return err

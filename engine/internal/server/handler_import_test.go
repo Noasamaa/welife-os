@@ -92,3 +92,16 @@ func TestGetMessagesRespectsLimitOffset(t *testing.T) {
 		t.Fatalf("expected offset=5, got %v", payload["offset"])
 	}
 }
+
+func TestGetMessagesCapsLimit(t *testing.T) {
+	app, cleanup := newTestApp(t)
+	defer cleanup()
+
+	rec := doJSON(t, app, http.MethodGet, "/api/v1/conversations/xxx/messages?limit=999999&offset=0", nil)
+	assertStatus(t, rec, http.StatusOK)
+
+	payload := decodeJSON[map[string]any](t, rec)
+	if int(payload["limit"].(float64)) != 500 {
+		t.Fatalf("expected capped limit=500, got %v", payload["limit"])
+	}
+}

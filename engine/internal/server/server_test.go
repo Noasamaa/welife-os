@@ -115,3 +115,38 @@ func TestSystemStatusToleratesUnavailableOllama(t *testing.T) {
 		t.Fatal("llm should be reported as unreachable")
 	}
 }
+
+func TestAPIAuthRejectsMissingTokenWhenConfigured(t *testing.T) {
+	t.Setenv("WELIFE_API_TOKEN", "test-token")
+
+	app, cleanup := newTestApp(t)
+	defer cleanup()
+
+	rec := doJSON(t, app, http.MethodGet, "/api/v1/system/status", nil)
+	assertStatus(t, rec, http.StatusUnauthorized)
+}
+
+func TestAPIAuthAllowsMatchingTokenWhenConfigured(t *testing.T) {
+	t.Setenv("WELIFE_API_TOKEN", "test-token")
+
+	app, cleanup := newTestApp(t)
+	defer cleanup()
+
+	rec := doJSONWithHeader(t, app, http.MethodGet, "/api/v1/system/status", nil, "X-WeLife-API-Token", "test-token")
+	assertStatus(t, rec, http.StatusOK)
+}
+
+func TestCORSAllowsAPIAuthHeader(t *testing.T) {
+	app, cleanup := newTestApp(t)
+	defer cleanup()
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodOptions, "/api/v1/system/status", nil)
+	req.Header.Set("Origin", "http://127.0.0.1:1420")
+	app.Handler().ServeHTTP(rec, req)
+
+	assertStatus(t, rec, http.StatusNoContent)
+	if got := rec.Header().Get("Access-Control-Allow-Headers"); got != "Content-Type, X-WeLife-API-Token" {
+		t.Fatalf("unexpected allow headers: %q", got)
+	}
+}

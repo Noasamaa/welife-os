@@ -24,12 +24,12 @@ describe("useSimulation", () => {
 
   it("loadProfiles fetches person profiles", async () => {
     const fakeProfiles: PersonProfile[] = [
-      { id: "p1", entity_id: "e1", name: "Alice", personality: "kind", relationship_to_self: "friend", behavioral_patterns: "regular", created_at: "", updated_at: "" },
+      { id: "p1", entity_id: "e1", name: "Alice", personality: "kind", relationship_to_self: "friend", behavioral_patterns: "regular", source_conversation_ids: "c1", created_at: "", updated_at: "" },
     ];
     mocks.fetchProfiles.mockResolvedValue(fakeProfiles);
 
     const { loadProfiles, profiles, loading } = useSimulation();
-    const promise = loadProfiles();
+    const promise = loadProfiles("c1");
     expect(loading.value).toBe(true);
     await promise;
 
@@ -41,7 +41,7 @@ describe("useSimulation", () => {
     mocks.fetchProfiles.mockRejectedValue(new Error("fail"));
 
     const { loadProfiles, error } = useSimulation();
-    await loadProfiles();
+    await loadProfiles("c1");
 
     expect(error.value).toBe("fail");
   });
@@ -50,7 +50,7 @@ describe("useSimulation", () => {
     mocks.buildProfiles.mockResolvedValue({ task_id: "t1" });
 
     const { buildAllProfiles, building } = useSimulation();
-    const promise = buildAllProfiles();
+    const promise = buildAllProfiles("c1");
     expect(building.value).toBe(true);
     const result = await promise;
 
@@ -62,7 +62,7 @@ describe("useSimulation", () => {
     mocks.buildProfiles.mockRejectedValue(new Error("build fail"));
 
     const { buildAllProfiles, error, building } = useSimulation();
-    const result = await buildAllProfiles();
+    const result = await buildAllProfiles("c1");
 
     expect(result).toBeNull();
     expect(error.value).toBe("build fail");
@@ -71,25 +71,25 @@ describe("useSimulation", () => {
 
   it("loadSessions fetches simulation session list", async () => {
     const fakeSessions: SimulationSession[] = [
-      { id: "sim1", task_id: "t1", fork_description: "test", status: "completed", step_count: 5, original_graph_snapshot: "", final_graph_snapshot: "", narrative: "", created_at: "" },
+      { id: "sim1", conversation_id: "c1", task_id: "t1", fork_description: "test", status: "completed", step_count: 5, original_graph_snapshot: "", final_graph_snapshot: "", narrative: "", created_at: "" },
     ];
     mocks.fetchSimulations.mockResolvedValue(fakeSessions);
 
     const { loadSessions, sessions } = useSimulation();
-    await loadSessions();
+    await loadSessions("c1");
 
     expect(sessions.value).toEqual(fakeSessions);
   });
 
   it("loadSession fetches simulation detail", async () => {
     const fakeDetail: SimulationDetail = {
-      session: { id: "sim1", task_id: "t1", fork_description: "test", status: "completed", step_count: 5, original_graph_snapshot: "", final_graph_snapshot: "", narrative: "", created_at: "" },
+      session: { id: "sim1", conversation_id: "c1", task_id: "t1", fork_description: "test", status: "completed", step_count: 5, original_graph_snapshot: "", final_graph_snapshot: "", narrative: "", created_at: "" },
       steps: [],
     };
     mocks.fetchSimulation.mockResolvedValue(fakeDetail);
 
     const { loadSession, currentSession } = useSimulation();
-    await loadSession("sim1");
+    await loadSession("sim1", "c1");
 
     expect(currentSession.value).toEqual(fakeDetail);
   });
@@ -98,25 +98,25 @@ describe("useSimulation", () => {
     const simResult = { session_id: "sim2", task_id: "t2" };
     mocks.runSimulation.mockResolvedValue(simResult);
     mocks.fetchSimulations.mockResolvedValue([]);
-    mocks.fetchSimulation.mockResolvedValue({ session: { id: "sim2", task_id: "t2", fork_description: "", status: "running", step_count: 0, created_at: "" }, steps: [] });
+    mocks.fetchSimulation.mockResolvedValue({ session: { id: "sim2", conversation_id: "c1", task_id: "t2", fork_description: "", status: "running", step_count: 0, created_at: "" }, steps: [] });
 
     const { startSimulation, running } = useSimulation();
-    const promise = startSimulation("what if", ["Alice"], { mood: "happy" }, 3);
+    const promise = startSimulation("c1", "what if", ["Alice"], { mood: "happy" }, 3);
     expect(running.value).toBe(true);
     const result = await promise;
 
     expect(result).toEqual(simResult);
     expect(running.value).toBe(false);
-    expect(mocks.runSimulation).toHaveBeenCalledWith("what if", ["Alice"], { mood: "happy" }, 3);
-    expect(mocks.fetchSimulations).toHaveBeenCalled();
-    expect(mocks.fetchSimulation).toHaveBeenCalledWith("sim2");
+    expect(mocks.runSimulation).toHaveBeenCalledWith("c1", "what if", ["Alice"], { mood: "happy" }, 3);
+    expect(mocks.fetchSimulations).toHaveBeenCalledWith("c1");
+    expect(mocks.fetchSimulation).toHaveBeenCalledWith("sim2", "c1");
   });
 
   it("startSimulation sets error on failure", async () => {
     mocks.runSimulation.mockRejectedValue(new Error("sim fail"));
 
     const { startSimulation, error, running } = useSimulation();
-    const result = await startSimulation("what if", [], {});
+    const result = await startSimulation("c1", "what if", [], {});
 
     expect(result).toBeNull();
     expect(error.value).toBe("sim fail");

@@ -48,6 +48,34 @@ func (s *Store) ListPersonProfiles(ctx context.Context) ([]PersonProfile, error)
 	return profiles, rows.Err()
 }
 
+// ListPersonProfilesByConversation returns all person profiles derived from a
+// specific conversation.
+func (s *Store) ListPersonProfilesByConversation(ctx context.Context, conversationID string) ([]PersonProfile, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, entity_id, name, personality, relationship_to_self,
+		       COALESCE(behavioral_patterns,''), COALESCE(source_conversation_ids,''),
+		       created_at, updated_at
+		FROM person_profiles
+		WHERE source_conversation_ids = ?
+		ORDER BY name`, conversationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var profiles []PersonProfile
+	for rows.Next() {
+		var p PersonProfile
+		if err := rows.Scan(&p.ID, &p.EntityID, &p.Name, &p.Personality,
+			&p.RelationshipToSelf, &p.BehavioralPatterns,
+			&p.SourceConversationIDs, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			return nil, err
+		}
+		profiles = append(profiles, p)
+	}
+	return profiles, rows.Err()
+}
+
 // GetPersonProfile returns a person profile by entity ID.
 func (s *Store) GetPersonProfile(ctx context.Context, entityID string) (PersonProfile, error) {
 	var p PersonProfile
@@ -68,10 +96,10 @@ func (s *Store) GetPersonProfile(ctx context.Context, entityID string) (PersonPr
 // CreateSimulationSession inserts a new simulation session.
 func (s *Store) CreateSimulationSession(ctx context.Context, sess SimulationSession) error {
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO simulation_sessions (id, task_id, fork_description, status,
+		INSERT INTO simulation_sessions (id, conversation_id, task_id, fork_description, status,
 		    step_count, original_graph_snapshot, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-		sess.ID, sess.TaskID, sess.ForkDescription, sess.Status,
+		VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+		sess.ID, sess.ConversationID, sess.TaskID, sess.ForkDescription, sess.Status,
 		sess.StepCount, sess.OriginalGraphSnapshot)
 	return err
 }
@@ -97,11 +125,11 @@ func (s *Store) UpdateSimulationSession(ctx context.Context, id, status, narrati
 func (s *Store) GetSimulationSession(ctx context.Context, id string) (SimulationSession, error) {
 	var sess SimulationSession
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, task_id, fork_description, status, step_count,
+		SELECT id, COALESCE(conversation_id,''), task_id, fork_description, status, step_count,
 		       COALESCE(original_graph_snapshot,''), COALESCE(final_graph_snapshot,''),
 		       COALESCE(narrative,''), created_at, COALESCE(completed_at,'')
 		FROM simulation_sessions WHERE id = ?`, id).
-		Scan(&sess.ID, &sess.TaskID, &sess.ForkDescription, &sess.Status,
+		Scan(&sess.ID, &sess.ConversationID, &sess.TaskID, &sess.ForkDescription, &sess.Status,
 			&sess.StepCount, &sess.OriginalGraphSnapshot, &sess.FinalGraphSnapshot,
 			&sess.Narrative, &sess.CreatedAt, &sess.CompletedAt)
 	if err == sql.ErrNoRows {
@@ -113,7 +141,7 @@ func (s *Store) GetSimulationSession(ctx context.Context, id string) (Simulation
 // ListSimulationSessions returns all simulation sessions ordered by creation time.
 func (s *Store) ListSimulationSessions(ctx context.Context) ([]SimulationSession, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, task_id, fork_description, status, step_count,
+		SELECT id, COALESCE(conversation_id,''), task_id, fork_description, status, step_count,
 		       COALESCE(original_graph_snapshot,''), COALESCE(final_graph_snapshot,''),
 		       COALESCE(narrative,''), created_at, COALESCE(completed_at,'')
 		FROM simulation_sessions ORDER BY created_at DESC`)
@@ -125,7 +153,35 @@ func (s *Store) ListSimulationSessions(ctx context.Context) ([]SimulationSession
 	var sessions []SimulationSession
 	for rows.Next() {
 		var sess SimulationSession
-		if err := rows.Scan(&sess.ID, &sess.TaskID, &sess.ForkDescription, &sess.Status,
+		if err := rows.Scan(&sess.ID, &sess.ConversationID, &sess.TaskID, &sess.ForkDescription, &sess.Status,
+			&sess.StepCount, &sess.OriginalGraphSnapshot, &sess.FinalGraphSnapshot,
+			&sess.Narrative, &sess.CreatedAt, &sess.CompletedAt); err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, sess)
+	}
+	return sessions, rows.Err()
+}
+
+// ListSimulationSessionsByConversation returns all simulation sessions for a
+// given conversation ordered by creation time.
+func (s *Store) ListSimulationSessionsByConversation(ctx context.Context, conversationID string) ([]SimulationSession, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, COALESCE(conversation_id,''), task_id, fork_description, status, step_count,
+		       COALESCE(original_graph_snapshot,''), COALESCE(final_graph_snapshot,''),
+		       COALESCE(narrative,''), created_at, COALESCE(completed_at,'')
+		FROM simulation_sessions
+		WHERE conversation_id = ?
+		ORDER BY created_at DESC`, conversationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []SimulationSession
+	for rows.Next() {
+		var sess SimulationSession
+		if err := rows.Scan(&sess.ID, &sess.ConversationID, &sess.TaskID, &sess.ForkDescription, &sess.Status,
 			&sess.StepCount, &sess.OriginalGraphSnapshot, &sess.FinalGraphSnapshot,
 			&sess.Narrative, &sess.CreatedAt, &sess.CompletedAt); err != nil {
 			return nil, err

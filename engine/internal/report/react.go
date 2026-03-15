@@ -112,14 +112,14 @@ func (a *ReactAgent) GenerateSection(ctx context.Context, plan SectionPlan, scop
 		fmt.Fprintf(&history, "思考 %d: %s\n", i+1, resp.Thought)
 
 		if resp.Finished || resp.Action == "finish" {
-			return Section{
+			return sanitizeSection(Section{
 				Title:     plan.Title,
 				Type:      plan.Type,
 				ChartType: plan.ChartType,
 				Data:      resp.Data,
 				Items:     resp.Items,
 				Narrative: resp.Narrative,
-			}, nil
+			}), nil
 		}
 
 		// Execute tool
@@ -197,11 +197,11 @@ func (a *ReactAgent) fallbackSection(ctx context.Context, plan SectionPlan, hist
 
 	response, err := a.llm.Generate(ctx, prompt)
 	if err != nil {
-		return Section{
+		return sanitizeSection(Section{
 			Title:     plan.Title,
 			Type:      "text",
 			Narrative: "数据收集不完整，无法生成此章节。",
-		}, nil
+		}), nil
 	}
 
 	jsonStr := llm.ExtractJSON(response)
@@ -209,18 +209,18 @@ func (a *ReactAgent) fallbackSection(ctx context.Context, plan SectionPlan, hist
 		Narrative string `json:"narrative"`
 	}
 	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
-		return Section{
+		return sanitizeSection(Section{
 			Title:     plan.Title,
 			Type:      "text",
 			Narrative: "数据收集不完整，无法生成此章节。",
-		}, nil
+		}), nil
 	}
 
-	return Section{
+	return sanitizeSection(Section{
 		Title:     plan.Title,
 		Type:      "text",
 		Narrative: result.Narrative,
-	}, nil
+	}), nil
 }
 
 func (a *ReactAgent) toolDescriptions() string {

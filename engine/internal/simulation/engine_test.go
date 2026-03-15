@@ -74,7 +74,7 @@ func TestProfileBuilderBuildAllEmpty(t *testing.T) {
 
 	builder := simulation.NewProfileBuilder(client, store)
 
-	profiles, err := builder.BuildAllProfiles(context.Background())
+	profiles, err := builder.BuildAllProfiles(context.Background(), "conv_test")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -92,11 +92,22 @@ func TestProfileBuilderBuildProfile(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
+	err := store.SaveConversation(ctx, storage.Conversation{
+		ID:               "conv_test",
+		Platform:         "test",
+		ConversationType: "private",
+		Title:            "测试对话",
+	})
+	if err != nil {
+		t.Fatalf("failed to save conversation: %v", err)
+	}
+
 	// Seed entity.
-	err := store.SaveEntity(ctx, storage.Entity{
-		ID:   "e_test_1",
-		Type: "person",
-		Name: "Alice",
+	err = store.SaveEntity(ctx, storage.Entity{
+		ID:                 "e_test_1",
+		Type:               "person",
+		Name:               "Alice",
+		SourceConversation: "conv_test",
 	})
 	if err != nil {
 		t.Fatalf("failed to save entity: %v", err)
@@ -104,7 +115,7 @@ func TestProfileBuilderBuildProfile(t *testing.T) {
 
 	builder := simulation.NewProfileBuilder(client, store)
 
-	profile, err := builder.BuildProfile(ctx, "e_test_1")
+	profile, err := builder.BuildProfile(ctx, "conv_test", "e_test_1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -165,9 +176,16 @@ func TestSimulationEngineRunAndComplete(t *testing.T) {
 
 	ctx := context.Background()
 
+	_ = store.SaveConversation(ctx, storage.Conversation{
+		ID:               "conv_test",
+		Platform:         "test",
+		ConversationType: "private",
+		Title:            "测试对话",
+	})
+
 	// Seed entities.
-	_ = store.SaveEntity(ctx, storage.Entity{ID: "e1", Type: "person", Name: "Alice"})
-	_ = store.SaveEntity(ctx, storage.Entity{ID: "e2", Type: "person", Name: "Bob"})
+	_ = store.SaveEntity(ctx, storage.Entity{ID: "e1", Type: "person", Name: "Alice", SourceConversation: "conv_test"})
+	_ = store.SaveEntity(ctx, storage.Entity{ID: "e2", Type: "person", Name: "Bob", SourceConversation: "conv_test"})
 	_ = store.SaveRelationships(ctx, []storage.Relationship{{
 		ID: "r1", SourceEntityID: "e1", TargetEntityID: "e2",
 		Type: "friend", Weight: 1.0,
@@ -182,7 +200,8 @@ func TestSimulationEngineRunAndComplete(t *testing.T) {
 	engine := simulation.NewEngine(client, store, tasks, profiler, graphStore)
 
 	config := simulation.SimulationConfig{
-		Steps: 2,
+		ConversationID: "conv_test",
+		Steps:          2,
 		ForkPoint: simulation.ForkPoint{
 			Description:   "Alice decided to move to a new city",
 			AffectedNodes: []string{"e1"},
@@ -250,8 +269,16 @@ func TestSimulationEngineRequiresForkDescription(t *testing.T) {
 	profiler := simulation.NewProfileBuilder(client, store)
 	engine := simulation.NewEngine(client, store, tasks, profiler, graphStore)
 
+	_ = store.SaveConversation(context.Background(), storage.Conversation{
+		ID:               "conv_required",
+		Platform:         "test",
+		ConversationType: "private",
+		Title:            "测试对话",
+	})
+
 	_, _, err := engine.RunSimulation(context.Background(), simulation.SimulationConfig{
-		Steps: 3,
+		ConversationID: "conv_required",
+		Steps:          3,
 	})
 	if err == nil {
 		t.Fatal("expected error for empty fork description")
@@ -271,7 +298,7 @@ func TestSimulationEngineListSessions(t *testing.T) {
 	profiler := simulation.NewProfileBuilder(client, store)
 	engine := simulation.NewEngine(client, store, tasks, profiler, graphStore)
 
-	sessions, err := engine.ListSessions(context.Background())
+	sessions, err := engine.ListSessions(context.Background(), "conv_missing")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -47,8 +47,8 @@ type profileLLMResponse struct {
 }
 
 // BuildProfile generates a profile for a single entity.
-func (b *ProfileBuilder) BuildProfile(ctx context.Context, entityID string) (storage.PersonProfile, error) {
-	entities, err := b.store.ListEntities(ctx)
+func (b *ProfileBuilder) BuildProfile(ctx context.Context, conversationID, entityID string) (storage.PersonProfile, error) {
+	entities, err := b.store.ListEntitiesByConversation(ctx, conversationID)
 	if err != nil {
 		return storage.PersonProfile{}, fmt.Errorf("listing entities: %w", err)
 	}
@@ -66,7 +66,7 @@ func (b *ProfileBuilder) BuildProfile(ctx context.Context, entityID string) (sto
 		return storage.PersonProfile{}, fmt.Errorf("entity %q not found", entityID)
 	}
 
-	rels, err := b.store.GetRelationships(ctx, entityID)
+	rels, err := b.store.ListRelationshipsByConversation(ctx, conversationID)
 	if err != nil {
 		return storage.PersonProfile{}, fmt.Errorf("getting relationships: %w", err)
 	}
@@ -75,6 +75,9 @@ func (b *ProfileBuilder) BuildProfile(ctx context.Context, entityID string) (sto
 	var relDesc strings.Builder
 	entityNames := buildEntityNameMap(entities)
 	for _, r := range rels {
+		if r.SourceEntityID != entityID && r.TargetEntityID != entityID {
+			continue
+		}
 		sourceName := entityNames[r.SourceEntityID]
 		targetName := entityNames[r.TargetEntityID]
 		fmt.Fprintf(&relDesc, "- %s → %s (类型: %s, 权重: %.1f)\n", sourceName, targetName, r.Type, r.Weight)
@@ -126,8 +129,8 @@ func (b *ProfileBuilder) BuildProfile(ctx context.Context, entityID string) (sto
 }
 
 // BuildAllProfiles generates profiles for all "person" type entities.
-func (b *ProfileBuilder) BuildAllProfiles(ctx context.Context) ([]storage.PersonProfile, error) {
-	entities, err := b.store.FindEntitiesByType(ctx, "person")
+func (b *ProfileBuilder) BuildAllProfiles(ctx context.Context, conversationID string) ([]storage.PersonProfile, error) {
+	entities, err := b.store.FindEntitiesByTypeInConversation(ctx, "person", conversationID)
 	if err != nil {
 		return nil, fmt.Errorf("finding person entities: %w", err)
 	}
@@ -138,7 +141,7 @@ func (b *ProfileBuilder) BuildAllProfiles(ctx context.Context) ([]storage.Person
 			return profiles, ctx.Err()
 		}
 
-		profile, err := b.BuildProfile(ctx, e.ID)
+		profile, err := b.BuildProfile(ctx, conversationID, e.ID)
 		if err != nil {
 			continue
 		}

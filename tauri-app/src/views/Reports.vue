@@ -110,7 +110,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useReport } from "../composables/useReport";
-import { fetchConversations, reportHTMLUrl, reportPDFUrl } from "../services/api";
+import { fetchConversations, fetchReportExportBlob } from "../services/api";
 import type { Conversation } from "../types/import";
 import type { ReportType } from "../types/report";
 import ReportViewer from "../components/ReportViewer.vue";
@@ -204,14 +204,14 @@ async function handleDelete() {
   await remove(currentReport.value.id);
 }
 
-function handleExportHTML() {
+async function handleExportHTML() {
   if (!currentReport.value) return;
-  window.open(reportHTMLUrl(currentReport.value.id), "_blank");
+  await exportReport("html");
 }
 
-function handleExportPDF() {
+async function handleExportPDF() {
   if (!currentReport.value) return;
-  window.open(reportPDFUrl(currentReport.value.id), "_blank");
+  await exportReport("pdf");
 }
 
 function typeLabel(type: string): string {
@@ -229,6 +229,29 @@ function stopPolling() {
     clearInterval(pollHandle);
     pollHandle = null;
   }
+}
+
+async function exportReport(format: "html" | "pdf") {
+  if (!currentReport.value) return;
+  try {
+    const blob = await fetchReportExportBlob(currentReport.value.id, format);
+    const objectURL = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectURL;
+    link.download = buildExportFilename(format);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectURL), 30_000);
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : "导出报告失败";
+  }
+}
+
+function buildExportFilename(format: "html" | "pdf"): string {
+  const rawTitle = currentReport.value?.title || currentReport.value?.id || "welife-report";
+  const safeTitle = rawTitle.replace(/[\\/:*?"<>|]+/g, "-").slice(0, 80);
+  return `${safeTitle}.${format}`;
 }
 </script>
 

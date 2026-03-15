@@ -17,8 +17,12 @@
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-notification": "^2",
-    "@tauri-apps/plugin-updater": "^2",
+    "d3-force": "^3.0.0",
+    "d3-selection": "^3.0.0",
+    "d3-zoom": "^3.0.0",
     "echarts": "^6.0.0",
+    "pixi-viewport": "^6.0.3",
+    "pixi.js": "^8.17.0",
     "vue": "^3.5.20",
     "vue-echarts": "^8.0.1",
     "vue-router": "^4.5.1"
@@ -26,6 +30,9 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.1",
     "@tauri-apps/cli": "^2.10.1",
+    "@types/d3-force": "^3.0.10",
+    "@types/d3-selection": "^3.0.11",
+    "@types/d3-zoom": "^3.0.8",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vitest/coverage-v8": "^4.1.0",
     "@vue/test-utils": "^2.4.6",
