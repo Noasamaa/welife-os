@@ -22,8 +22,8 @@ export function useSimulation() {
     error.value = null;
     try {
       profiles.value = await fetchProfiles();
-    } catch (e: any) {
-      error.value = e.message ?? "加载人物画像失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "加载人物画像失败";
     } finally {
       loading.value = false;
     }
@@ -34,8 +34,8 @@ export function useSimulation() {
     error.value = null;
     try {
       return await buildProfiles();
-    } catch (e: any) {
-      error.value = e.message ?? "构建画像失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "构建画像失败";
       return null;
     } finally {
       building.value = false;
@@ -47,8 +47,8 @@ export function useSimulation() {
     error.value = null;
     try {
       sessions.value = await fetchSimulations();
-    } catch (e: any) {
-      error.value = e.message ?? "加载模拟列表失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "加载模拟列表失败";
     } finally {
       loading.value = false;
     }
@@ -59,8 +59,8 @@ export function useSimulation() {
     error.value = null;
     try {
       currentSession.value = await fetchSimulation(id);
-    } catch (e: any) {
-      error.value = e.message ?? "加载模拟详情失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "加载模拟详情失败";
     } finally {
       loading.value = false;
     }
@@ -78,8 +78,8 @@ export function useSimulation() {
       const result = await runSimulation(forkDescription, affectedNodes, changes, steps);
       await Promise.all([loadSessions(), loadSession(result.session_id)]);
       return result;
-    } catch (e: any) {
-      error.value = e.message ?? "启动模拟失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "启动模拟失败";
       return null;
     } finally {
       running.value = false;

@@ -1,4 +1,4 @@
-import { onMounted, ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 
 import { API_BASE_URL, fetchSystemStatus } from "../services/api";
 import type { SystemStatusResponse } from "../types/api";
@@ -10,6 +10,7 @@ const systemStatus = ref<SystemStatusResponse | null>(null);
 const errorMessage = ref<string | null>(null);
 let initialized = false;
 let pollHandle: number | null = null;
+let mountCount = 0;
 
 export function useBackendHealth() {
   async function checkHealth(): Promise<void> {
@@ -25,12 +26,23 @@ export function useBackendHealth() {
   }
 
   onMounted(() => {
+    mountCount++;
     if (!initialized) {
       initialized = true;
       void checkHealth();
       pollHandle = window.setInterval(() => {
         void checkHealth();
       }, 5000);
+    }
+  });
+
+  onUnmounted(() => {
+    mountCount--;
+    if (mountCount <= 0 && pollHandle !== null) {
+      window.clearInterval(pollHandle);
+      pollHandle = null;
+      initialized = false;
+      mountCount = 0;
     }
   });
 

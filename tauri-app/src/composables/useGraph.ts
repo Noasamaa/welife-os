@@ -13,8 +13,8 @@ export function useGraph() {
     error.value = null;
     try {
       overview.value = await fetchGraphOverview();
-    } catch (e: any) {
-      error.value = e.message ?? "加载图谱失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "加载图谱失败";
     } finally {
       loading.value = false;
     }
@@ -25,8 +25,8 @@ export function useGraph() {
     error.value = null;
     try {
       return await triggerGraphBuild(conversationID);
-    } catch (e: any) {
-      error.value = e.message ?? "构建图谱失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "构建图谱失败";
       return null;
     } finally {
       building.value = false;

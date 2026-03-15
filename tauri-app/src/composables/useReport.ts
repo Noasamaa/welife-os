@@ -28,8 +28,8 @@ export function useReport() {
     error.value = null;
     try {
       reports.value = await fetchReports();
-    } catch (e: any) {
-      error.value = e.message ?? "加载报告列表失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "加载报告列表失败";
     } finally {
       loading.value = false;
     }
@@ -40,8 +40,8 @@ export function useReport() {
     error.value = null;
     try {
       currentReport.value = await fetchReport(id);
-    } catch (e: any) {
-      error.value = e.message ?? "加载报告失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "加载报告失败";
     } finally {
       loading.value = false;
     }
@@ -59,8 +59,8 @@ export function useReport() {
       const result = await generateReport(type, conversationID, periodStart, periodEnd);
       await loadReports();
       return result;
-    } catch (e: any) {
-      error.value = e.message ?? "生成报告失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "生成报告失败";
       return null;
     } finally {
       generating.value = false;
@@ -73,8 +73,8 @@ export function useReport() {
       await deleteReport(id);
       currentReport.value = null;
       await loadReports();
-    } catch (e: any) {
-      error.value = e.message ?? "删除报告失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "删除报告失败";
     }
   }
 

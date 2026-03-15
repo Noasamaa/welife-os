@@ -18,8 +18,8 @@ export function useCoach() {
     error.value = null;
     try {
       items.value = await fetchActionItems(status, category);
-    } catch (e: any) {
-      error.value = e.message ?? "加载行动项失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "加载行动项失败";
     } finally {
       loading.value = false;
     }
@@ -33,8 +33,8 @@ export function useCoach() {
       items.value = result.items;
       await loadItems();
       return result;
-    } catch (e: any) {
-      error.value = e.message ?? "生成行动计划失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "生成行动计划失败";
       return null;
     } finally {
       generating.value = false;
@@ -46,8 +46,8 @@ export function useCoach() {
     try {
       await updateActionItemStatus(id, status);
       await loadItems();
-    } catch (e: any) {
-      error.value = e.message ?? "更新状态失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "更新状态失败";
     }
   }
 
@@ -56,8 +56,8 @@ export function useCoach() {
     try {
       await deleteActionItem(id);
       await loadItems();
-    } catch (e: any) {
-      error.value = e.message ?? "删除失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "删除失败";
     }
   }
 

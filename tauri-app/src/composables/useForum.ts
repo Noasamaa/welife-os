@@ -18,8 +18,8 @@ export function useForum() {
     error.value = null;
     try {
       sessions.value = await fetchForumSessions();
-    } catch (e: any) {
-      error.value = e.message ?? "加载辩论会话失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "加载辩论会话失败";
     } finally {
       loading.value = false;
     }
@@ -30,8 +30,8 @@ export function useForum() {
     error.value = null;
     try {
       currentSession.value = await fetchForumSession(id);
-    } catch (e: any) {
-      error.value = e.message ?? "加载辩论详情失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "加载辩论详情失败";
     } finally {
       loading.value = false;
     }
@@ -46,8 +46,8 @@ export function useForum() {
       const result = await triggerDebate(conversationID);
       await Promise.all([loadSessions(), loadSession(result.session_id)]);
       return result;
-    } catch (e: any) {
-      error.value = e.message ?? "启动辩论失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "启动辩论失败";
       return null;
     } finally {
       debating.value = false;

@@ -26,8 +26,8 @@ export function useReminder() {
       pending.value = await fetchPendingReminders();
       void setTrayBadge(pending.value.length);
       void notifyNewReminders(pending.value);
-    } catch (e: any) {
-      error.value = e.message ?? "加载提醒失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "加载提醒失败";
     }
   }
 
@@ -36,8 +36,8 @@ export function useReminder() {
     error.value = null;
     try {
       rules.value = await fetchReminderRules();
-    } catch (e: any) {
-      error.value = e.message ?? "加载提醒规则失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "加载提醒规则失败";
     } finally {
       loading.value = false;
     }
@@ -47,8 +47,8 @@ export function useReminder() {
     try {
       await markReminderRead(id);
       await loadPending();
-    } catch (e: any) {
-      error.value = e.message ?? "标记已读失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "标记已读失败";
     }
   }
 
@@ -56,8 +56,8 @@ export function useReminder() {
     try {
       await dismissReminder(id);
       await loadPending();
-    } catch (e: any) {
-      error.value = e.message ?? "取消提醒失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "取消提醒失败";
     }
   }
 
@@ -66,8 +66,8 @@ export function useReminder() {
     try {
       await createReminderRule(rule);
       await loadRules();
-    } catch (e: any) {
-      error.value = e.message ?? "创建规则失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "创建规则失败";
     }
   }
 
@@ -75,8 +75,8 @@ export function useReminder() {
     try {
       await updateReminderRule(id, enabled);
       await loadRules();
-    } catch (e: any) {
-      error.value = e.message ?? "更新规则失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "更新规则失败";
     }
   }
 
@@ -84,8 +84,8 @@ export function useReminder() {
     try {
       await deleteReminderRule(id);
       await loadRules();
-    } catch (e: any) {
-      error.value = e.message ?? "删除规则失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "删除规则失败";
     }
   }
 

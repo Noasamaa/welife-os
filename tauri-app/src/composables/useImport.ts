@@ -14,8 +14,8 @@ export function useImport() {
       const result = await uploadFile(file, format, selfName);
       await refreshJobs();
       return result;
-    } catch (e: any) {
-      error.value = e.message ?? "上传失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "上传失败";
       return null;
     } finally {
       uploading.value = false;
@@ -25,8 +25,8 @@ export function useImport() {
   async function refreshJobs() {
     try {
       jobs.value = await fetchImportJobs();
-    } catch (e: any) {
-      error.value = e.message ?? "获取任务列表失败";
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : "获取任务列表失败";
     }
   }
 
