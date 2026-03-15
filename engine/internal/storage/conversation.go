@@ -149,3 +149,57 @@ func (s *Store) MessageCount(ctx context.Context, conversationID string) (int, e
 	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM messages WHERE conversation_id = ?`, conversationID).Scan(&count)
 	return count, err
 }
+
+// SearchMessages performs keyword-based search on messages with optional filters.
+func (s *Store) SearchMessages(ctx context.Context, params MessageSearchParams) ([]StoredMessage, error) {
+	limit := params.Limit
+	if limit <= 0 {
+		limit = 100
+	}
+
+	query := `SELECT id, conversation_id, platform, sender_id, sender_name, content,
+	                 message_type, COALESCE(reply_to,''), timestamp
+	          FROM messages WHERE 1=1`
+	var args []any
+
+	if params.Keyword != "" {
+		query += ` AND content LIKE ?`
+		args = append(args, "%"+params.Keyword+"%")
+	}
+	if params.ConversationID != "" {
+		query += ` AND conversation_id = ?`
+		args = append(args, params.ConversationID)
+	}
+	if params.SenderName != "" {
+		query += ` AND sender_name = ?`
+		args = append(args, params.SenderName)
+	}
+	if params.After != "" {
+		query += ` AND timestamp >= ?`
+		args = append(args, params.After)
+	}
+	if params.Before != "" {
+		query += ` AND timestamp <= ?`
+		args = append(args, params.Before)
+	}
+
+	query += ` ORDER BY timestamp ASC LIMIT ?`
+	args = append(args, limit)
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var msgs []StoredMessage
+	for rows.Next() {
+		var m StoredMessage
+		if err := rows.Scan(&m.ID, &m.ConversationID, &m.Platform, &m.SenderID,
+			&m.SenderName, &m.Content, &m.MessageType, &m.ReplyTo, &m.Timestamp); err != nil {
+			return nil, err
+		}
+		msgs = append(msgs, m)
+	}
+	return msgs, rows.Err()
+}
