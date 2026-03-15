@@ -46,6 +46,8 @@ type Manager struct {
 	tasks map[string]Info
 }
 
+const taskTTL = 1 * time.Hour
+
 func NewManager(workerCount int) *Manager {
 	if workerCount < 1 {
 		workerCount = 1
@@ -62,6 +64,9 @@ func NewManager(workerCount int) *Manager {
 		manager.wg.Add(1)
 		go manager.worker(ctx)
 	}
+
+	manager.wg.Add(1)
+	go manager.cleaner(ctx)
 
 	return manager
 }
@@ -157,4 +162,30 @@ func (m *Manager) update(id string, updateFn func(*Info)) {
 	info := m.tasks[id]
 	updateFn(&info)
 	m.tasks[id] = info
+}
+
+// cleaner periodically removes completed/failed tasks older than taskTTL.
+func (m *Manager) cleaner(ctx context.Context) {
+	defer m.wg.Done()
+	ticker := time.NewTicker(10 * time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			m.pruneExpired()
+		}
+	}
+}
+
+func (m *Manager) pruneExpired() {
+	cutoff := time.Now().Add(-taskTTL)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for id, info := range m.tasks {
+		if (info.Status == StatusSucceeded || info.Status == StatusFailed) && info.UpdatedAt.Before(cutoff) {
+			delete(m.tasks, id)
+		}
+	}
 }

@@ -42,11 +42,11 @@ type ExtractionResult struct {
 
 // Extractor uses LLM to extract entities and relationships from messages.
 type Extractor struct {
-	llm *llm.Client
+	llm llm.LLMClient
 }
 
 // NewExtractor creates a new entity extractor.
-func NewExtractor(llmClient *llm.Client) *Extractor {
+func NewExtractor(llmClient llm.LLMClient) *Extractor {
 	return &Extractor{llm: llmClient}
 }
 

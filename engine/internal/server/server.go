@@ -28,8 +28,10 @@ type Config struct {
 	Port          int
 	DatabasePath  string
 	DatabaseKey   string
-	OllamaBaseURL string
-	OllamaModel   string
+	LLMProvider   string
+	LLMBaseURL    string
+	LLMModel      string
+	LLMAPIKey     string
 }
 
 func (c Config) Addr() string {
@@ -39,7 +41,7 @@ func (c Config) Addr() string {
 type Server struct {
 	config      Config
 	store       *storage.Store
-	llmClient   *llm.Client
+	llmClient   llm.LLMClient
 	taskManager *task.Manager
 	importer    *importer.Service
 	graphEngine *graph.Engine
@@ -64,10 +66,12 @@ func New(cfg Config) (*Server, error) {
 		return nil, err
 	}
 
-	llmClient, err := llm.New(llm.Config{
-		BaseURL: cfg.OllamaBaseURL,
-		Model:   cfg.OllamaModel,
-		Timeout: 5 * time.Second,
+	llmClient, err := llm.NewClient(llm.Config{
+		Provider: cfg.LLMProvider,
+		BaseURL:  cfg.LLMBaseURL,
+		Model:    cfg.LLMModel,
+		Timeout:  120 * time.Second,
+		APIKey:   cfg.LLMAPIKey,
 	})
 	if err != nil {
 		_ = store.Close()

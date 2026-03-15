@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -297,7 +298,9 @@ func (e *Engine) runDebateRound(
 }
 
 func (e *Engine) failSession(ctx context.Context, sessionID string, err error) {
-	_ = e.store.UpdateSession(ctx, sessionID, string(StatusFailed), "", err.Error())
+	if dbErr := e.store.UpdateSession(ctx, sessionID, string(StatusFailed), "", err.Error()); dbErr != nil {
+		log.Printf("forum: failed to mark session %s as failed: %v", sessionID, dbErr)
+	}
 }
 
 func findAnalysis(analyses []agent.AnalysisOutput, name string) *agent.AnalysisOutput {

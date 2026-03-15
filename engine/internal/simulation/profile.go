@@ -12,12 +12,12 @@ import (
 
 // ProfileBuilder generates person profiles from entity and relationship data.
 type ProfileBuilder struct {
-	llm   *llm.Client
+	llm   llm.LLMClient
 	store *storage.Store
 }
 
 // NewProfileBuilder creates a ProfileBuilder.
-func NewProfileBuilder(llmClient *llm.Client, store *storage.Store) *ProfileBuilder {
+func NewProfileBuilder(llmClient llm.LLMClient, store *storage.Store) *ProfileBuilder {
 	return &ProfileBuilder{llm: llmClient, store: store}
 }
 

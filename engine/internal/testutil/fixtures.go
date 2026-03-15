@@ -15,11 +15,12 @@ func TempDatabasePath(t testing.TB) string {
 func NewServerConfig(t testing.TB, ollamaURL string) server.Config {
 	t.Helper()
 	return server.Config{
-		Host:          "127.0.0.1",
-		Port:          18080,
-		DatabasePath:  TempDatabasePath(t),
-		DatabaseKey:   "welife-phase0-test-key",
-		OllamaBaseURL: ollamaURL,
-		OllamaModel:   "qwen3.5:9b",
+		Host:         "127.0.0.1",
+		Port:         18080,
+		DatabasePath: TempDatabasePath(t),
+		DatabaseKey:  "welife-phase0-test-key",
+		LLMProvider:  "ollama",
+		LLMBaseURL:   ollamaURL,
+		LLMModel:     "qwen3.5:9b",
 	}
 }

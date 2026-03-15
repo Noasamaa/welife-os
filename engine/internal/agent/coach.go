@@ -20,12 +20,12 @@ const coachAgentName = "execution_coach"
 // CoachAgent extracts actionable items from conversations and debate sessions.
 // It identifies projects to follow up, people to contact, and decisions to make.
 type CoachAgent struct {
-	llm   *llm.Client
+	llm   llm.LLMClient
 	store *storage.Store
 }
 
 // NewCoachAgent creates a new execution coach agent.
-func NewCoachAgent(llmClient *llm.Client, store *storage.Store) *CoachAgent {
+func NewCoachAgent(llmClient llm.LLMClient, store *storage.Store) *CoachAgent {
 	return &CoachAgent{llm: llmClient, store: store}
 }
 

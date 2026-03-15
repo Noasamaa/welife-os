@@ -14,11 +14,11 @@ const simulatorAgentName = "future_simulator"
 // SimulatorAgent identifies potential fork points in conversation data
 // for parallel-life simulations.
 type SimulatorAgent struct {
-	llm *llm.Client
+	llm llm.LLMClient
 }
 
 // NewSimulatorAgent creates a new future simulator agent.
-func NewSimulatorAgent(llmClient *llm.Client) *SimulatorAgent {
+func NewSimulatorAgent(llmClient llm.LLMClient) *SimulatorAgent {
 	return &SimulatorAgent{llm: llmClient}
 }
 

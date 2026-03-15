@@ -2,10 +2,11 @@ package reminder
 
 import (
 	"context"
-	"fmt"
 	"log"
+	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/welife-os/welife-os/engine/internal/storage"
 )
 
@@ -13,10 +14,11 @@ const checkInterval = 15 * time.Minute
 
 // Scheduler runs periodic checks on reminder rules.
 type Scheduler struct {
-	store   *storage.Store
-	checker *Checker
-	ticker  *time.Ticker
-	done    chan struct{}
+	store    *storage.Store
+	checker  *Checker
+	ticker   *time.Ticker
+	done     chan struct{}
+	stopOnce sync.Once
 }
 
 // NewScheduler creates a new scheduler.
@@ -36,10 +38,12 @@ func (s *Scheduler) Start(ctx context.Context) {
 
 // Stop stops the scheduler.
 func (s *Scheduler) Stop() {
-	if s.ticker != nil {
-		s.ticker.Stop()
-	}
-	close(s.done)
+	s.stopOnce.Do(func() {
+		if s.ticker != nil {
+			s.ticker.Stop()
+		}
+		close(s.done)
+	})
 }
 
 func (s *Scheduler) run(ctx context.Context) {
@@ -98,5 +102,5 @@ func (s *Scheduler) checkRules(ctx context.Context) {
 
 // generateID produces a unique ID for reminders.
 func generateID() string {
-	return fmt.Sprintf("rem_%d", time.Now().UnixNano())
+	return "rem_" + uuid.New().String()
 }

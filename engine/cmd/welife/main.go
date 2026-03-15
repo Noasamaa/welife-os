@@ -76,12 +76,14 @@ func loadConfig() (server.Config, error) {
 	}
 
 	return server.Config{
-		Host:          lookupString("WELIFE_HOST", "127.0.0.1"),
-		Port:          port,
-		DatabasePath:  dbPath,
-		DatabaseKey:   dbKey,
-		OllamaBaseURL: lookupString("WELIFE_OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
-		OllamaModel:   lookupString("WELIFE_OLLAMA_MODEL", "qwen3.5:9b"),
+		Host:         lookupString("WELIFE_HOST", "127.0.0.1"),
+		Port:         port,
+		DatabasePath: dbPath,
+		DatabaseKey:  dbKey,
+		LLMProvider:  lookupString("WELIFE_LLM_PROVIDER", "ollama"),
+		LLMBaseURL:   lookupString("WELIFE_OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
+		LLMModel:     lookupString("WELIFE_OLLAMA_MODEL", "qwen3.5:9b"),
+		LLMAPIKey:    lookupString("WELIFE_LLM_API_KEY", ""),
 	}, nil
 }
 

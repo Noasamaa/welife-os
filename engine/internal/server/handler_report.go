@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -145,7 +146,9 @@ func (s *Server) handleExportReportPDF(w http.ResponseWriter, r *http.Request) {
 	filename := content.Title + ".pdf"
 	w.Header().Set("Content-Type", "application/pdf")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
-	w.Write(pdf)
+	if _, err := w.Write(pdf); err != nil {
+		log.Printf("handler: writing PDF response: %v", err)
+	}
 }
 
 func parseReportContent(rpt storage.Report) (report.ReportContent, error) {

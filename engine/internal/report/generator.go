@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sync/atomic"
 	"time"
 
@@ -19,11 +20,11 @@ type Generator struct {
 	agent *ReactAgent
 	store *storage.Store
 	tasks *task.Manager
-	llm   *llm.Client
+	llm   llm.LLMClient
 }
 
 // NewGenerator creates a new report generator.
-func NewGenerator(llmClient *llm.Client, store *storage.Store, tasks *task.Manager, tools []Tool) *Generator {
+func NewGenerator(llmClient llm.LLMClient, store *storage.Store, tasks *task.Manager, tools []Tool) *Generator {
 	return &Generator{
 		agent: NewReactAgent(llmClient, tools),
 		store: store,
@@ -193,5 +194,7 @@ func buildSectionsSummary(sections []Section) fmt.Stringer {
 }
 
 func (g *Generator) failReport(ctx context.Context, reportID string, err error) {
-	_ = g.store.UpdateReport(ctx, reportID, "failed", "", err.Error())
+	if dbErr := g.store.UpdateReport(ctx, reportID, "failed", "", err.Error()); dbErr != nil {
+		log.Printf("report: failed to mark report %s as failed: %v", reportID, dbErr)
+	}
 }

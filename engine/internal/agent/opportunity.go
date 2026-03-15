@@ -15,11 +15,11 @@ const opportunityAgentName = "opportunity_miner"
 // OpportunityAgent scans conversations for projects, jobs, collaborations,
 // and identifies unfollowed items using graph relationships.
 type OpportunityAgent struct {
-	llm *llm.Client
+	llm llm.LLMClient
 }
 
 // NewOpportunityAgent creates a new opportunity miner agent.
-func NewOpportunityAgent(llmClient *llm.Client) *OpportunityAgent {
+func NewOpportunityAgent(llmClient llm.LLMClient) *OpportunityAgent {
 	return &OpportunityAgent{llm: llmClient}
 }
 
