@@ -1,0 +1,50 @@
+{
+  "name": "测试群聊",
+  "type": "private_supergroup",
+  "id": 123456789,
+  "messages": [
+    {
+      "id": 1,
+      "type": "message",
+      "date": "2024-01-15T10:30:00",
+      "date_unixtime": "1705312200",
+      "from": "Alice",
+      "from_id": "user111",
+      "text": "大家好！"
+    },
+    {
+      "id": 2,
+      "type": "message",
+      "date": "2024-01-15T10:31:00",
+      "date_unixtime": "1705312260",
+      "from": "Bob",
+      "from_id": "user222",
+      "text": [
+        {"type": "plain", "text": "你好 "},
+        {"type": "mention", "text": "@Alice"},
+        {"type": "plain", "text": " 最近怎么样？"}
+      ],
+      "reply_to_message_id": 1
+    },
+    {
+      "id": 3,
+      "type": "message",
+      "date": "2024-01-15T10:32:00",
+      "date_unixtime": "1705312320",
+      "from": "Alice",
+      "from_id": "user111",
+      "text": "挺好的！看看这张照片",
+      "photo": "photos/photo_1.jpg"
+    },
+    {
+      "id": 4,
+      "type": "service",
+      "date": "2024-01-15T10:33:00",
+      "date_unixtime": "1705312380",
+      "actor": "Alice",
+      "actor_id": "user111",
+      "action": "pin_message",
+      "text": ""
+    }
+  ]
+}
