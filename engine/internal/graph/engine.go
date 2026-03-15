@@ -76,6 +76,12 @@ func (e *Engine) BuildGraph(ctx context.Context, conversationID string) (string,
 
 // buildGraphSync runs the full extraction pipeline synchronously.
 func (e *Engine) buildGraphSync(ctx context.Context, conversationID string) error {
+	// Clear old graph data before rebuilding
+	if err := e.store.ClearGraph(ctx); err != nil {
+		return fmt.Errorf("clearing old graph: %w", err)
+	}
+	e.graph = NewGraphStore()
+
 	// Load messages in batches
 	const batchSize = 50
 	offset := 0

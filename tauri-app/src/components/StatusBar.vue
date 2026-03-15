@@ -3,18 +3,16 @@
     <div>
       <p class="label">后端状态</p>
       <span class="status-pill" :class="backendClass">{{ backendLabel }}</span>
+      <p class="hint">{{ apiBaseUrl }}</p>
     </div>
     <div>
       <p class="label">存储状态</p>
       <span class="status-pill" :class="storageClass">{{ storageLabel }}</span>
     </div>
     <div>
-      <p class="label">Ollama 状态</p>
+      <p class="label">{{ llmSectionLabel }}</p>
       <span class="status-pill" :class="llmClass">{{ llmLabel }}</span>
-    </div>
-    <div>
-      <p class="label">API 地址</p>
-      <strong>{{ apiBaseUrl }}</strong>
+      <p v-if="llmBaseUrl" class="hint">{{ llmBaseUrl }}</p>
     </div>
   </div>
 </template>
@@ -60,6 +58,18 @@ const storageClass = computed(() => {
   return systemStatus.value.storage.ready ? "ok" : "warn";
 });
 
+const llmSectionLabel = computed(() => {
+  if (!systemStatus.value) return "LLM 状态";
+  const provider = systemStatus.value.llm.provider;
+  if (provider === "ollama") return "Ollama 状态";
+  if (provider === "openai-compatible") return "LLM 状态 (云端)";
+  return `LLM 状态 (${provider})`;
+});
+
+const llmBaseUrl = computed(() => {
+  return systemStatus.value?.llm.base_url ?? null;
+});
+
 const llmLabel = computed(() => {
   if (!systemStatus.value) {
     return "检查中";
@@ -80,7 +90,7 @@ const llmClass = computed(() => {
 <style scoped>
 .bar {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   padding: 18px 20px;
 }
@@ -89,14 +99,27 @@ const llmClass = computed(() => {
   margin: 0 0 6px;
   font-size: 12px;
   color: var(--color-text-muted);
+  padding-left: 10px;
 }
 
-strong {
+.hint {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--color-text-muted, #999);
   word-break: break-all;
-  color: var(--color-text);
+  line-height: 1.3;
 }
 
-@media (max-width: 1100px) {
+.bar :deep(.status-pill) {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+@media (max-width: 900px) {
   .bar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

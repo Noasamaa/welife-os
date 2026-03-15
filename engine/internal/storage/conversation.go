@@ -123,6 +123,26 @@ func (s *Store) ListConversations(ctx context.Context) ([]Conversation, error) {
 	return convs, rows.Err()
 }
 
+// DeleteConversation removes a conversation and all related data (messages, participants).
+func (s *Store) DeleteConversation(ctx context.Context, id string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, `DELETE FROM messages WHERE conversation_id = ?`, id); err != nil {
+		return fmt.Errorf("deleting messages: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM participants WHERE conversation_id = ?`, id); err != nil {
+		return fmt.Errorf("deleting participants: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM conversations WHERE id = ?`, id); err != nil {
+		return fmt.Errorf("deleting conversation: %w", err)
+	}
+	return tx.Commit()
+}
+
 // GetConversation returns a single conversation by ID.
 func (s *Store) GetConversation(ctx context.Context, id string) (Conversation, error) {
 	var c Conversation

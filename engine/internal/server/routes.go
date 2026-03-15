@@ -54,10 +54,12 @@ func (s *Server) routes() http.Handler {
 		api.Post("/import", s.handleImportUpload)
 		api.Get("/import/jobs", s.handleListImportJobs)
 		api.Get("/import/jobs/{id}", s.handleGetImportJob)
+		api.Delete("/import/jobs/{id}", s.handleDeleteImportJob)
 
 		// Conversation endpoints
 		api.Get("/conversations", s.handleListConversations)
 		api.Get("/conversations/{id}", s.handleGetConversation)
+		api.Delete("/conversations/{id}", s.handleDeleteConversation)
 		api.Get("/conversations/{id}/messages", s.handleGetMessages)
 
 		// Graph endpoints

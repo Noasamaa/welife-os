@@ -8,6 +8,22 @@ import (
 	"strings"
 )
 
+// ClearGraph removes all entities and relationships from the database.
+func (s *Store) ClearGraph(ctx context.Context) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM relationships`); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM entities`); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 // SaveEntity inserts or replaces an entity.
 func (s *Store) SaveEntity(ctx context.Context, e Entity) error {
 	_, err := s.db.ExecContext(ctx, `

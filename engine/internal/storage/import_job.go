@@ -56,6 +56,12 @@ func (s *Store) GetImportJob(ctx context.Context, id string) (ImportJob, error) 
 	return j, err
 }
 
+// DeleteImportJob removes an import job record by ID.
+func (s *Store) DeleteImportJob(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM import_jobs WHERE id = ?`, id)
+	return err
+}
+
 // ListImportJobs returns all import jobs ordered by start time.
 func (s *Store) ListImportJobs(ctx context.Context) ([]ImportJob, error) {
 	rows, err := s.db.QueryContext(ctx, `

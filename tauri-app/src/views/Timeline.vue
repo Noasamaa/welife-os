@@ -40,7 +40,7 @@ import { ref, onMounted } from "vue";
 import { fetchForumSessions, fetchActionItems, fetchPendingReminders } from "../services/api";
 
 interface TimelineEvent {
-  type: "debate" | "action" | "reminder";
+  type: "debate" | "debate-running" | "debate-failed" | "action" | "reminder";
   text: string;
   time: string;
 }
@@ -63,15 +63,29 @@ async function reload() {
 
     const all: TimelineEvent[] = [];
 
-    for (const s of sessions) {
+    const sessionList = Array.isArray(sessions) ? sessions : [];
+    for (const s of sessionList) {
+      const debateType: TimelineEvent["type"] =
+        s.status === "failed" ? "debate-failed" :
+        s.status === "running" ? "debate-running" :
+        "debate";
+      let text: string;
+      if (s.status === "failed") {
+        text = `辩论失败 — 会话 ${s.id.slice(0, 16)}`;
+      } else if (s.status === "running") {
+        text = `辩论进行中 — 会话 ${s.id.slice(0, 16)}`;
+      } else {
+        text = s.summary || `辩论会话 ${s.id.slice(0, 16)}`;
+      }
       all.push({
-        type: "debate",
-        text: s.summary || `辩论会话 ${s.id.slice(0, 16)}`,
+        type: debateType,
+        text,
         time: s.completed_at || s.created_at,
       });
     }
 
-    for (const item of items) {
+    const itemList = Array.isArray(items) ? items : [];
+    for (const item of itemList) {
       all.push({
         type: "action",
         text: `[${item.priority}] ${item.title}`,
@@ -79,7 +93,8 @@ async function reload() {
       });
     }
 
-    for (const r of reminders) {
+    const reminderList = Array.isArray(reminders) ? reminders : [];
+    for (const r of reminderList) {
       all.push({
         type: "reminder",
         text: r.message,
@@ -89,15 +104,21 @@ async function reload() {
 
     all.sort((a, b) => (b.time || "").localeCompare(a.time || ""));
     events.value = all;
-  } catch (e: any) {
-    error.value = e.message ?? "加载时间线失败";
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : "加载时间线失败";
   } finally {
     loading.value = false;
   }
 }
 
 function typeLabel(type: string): string {
-  const m: Record<string, string> = { debate: "辩论", action: "行动", reminder: "提醒" };
+  const m: Record<string, string> = {
+    debate: "辩论",
+    "debate-running": "辩论 (进行中)",
+    "debate-failed": "辩论 (失败)",
+    action: "行动",
+    reminder: "提醒",
+  };
   return m[type] ?? type;
 }
 </script>
@@ -136,6 +157,8 @@ function typeLabel(type: string): string {
   z-index: 1;
 }
 .dot-debate { background: #4a90d9; }
+.dot-debate-running { background: #f39c12; }
+.dot-debate-failed { background: #e74c3c; }
 .dot-action { background: #27ae60; }
 .dot-reminder { background: #f39c12; }
 
@@ -144,6 +167,8 @@ function typeLabel(type: string): string {
 .event-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .event-type { padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
 .type-debate { background: #e8f4fd; color: #2980b9; }
+.type-debate-running { background: #fef3e2; color: #e67e22; }
+.type-debate-failed { background: #fde8e8; color: #c0392b; }
 .type-action { background: #e8f8ef; color: #27ae60; }
 .type-reminder { background: #fef3e2; color: #e67e22; }
 
