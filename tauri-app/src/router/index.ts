@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 
+import CoachView from "../views/Coach.vue";
 import DashboardView from "../views/Dashboard.vue";
 import ForumView from "../views/Forum.vue";
 import ImportView from "../views/Import.vue";
@@ -15,6 +16,7 @@ const router = createRouter({
     { path: "/import", name: "import", component: ImportView },
     { path: "/reports", name: "reports", component: ReportsView },
     { path: "/forum", name: "forum", component: ForumView },
+    { path: "/coach", name: "coach", component: CoachView },
     { path: "/timeline", name: "timeline", component: TimelineView },
     { path: "/simulation", name: "simulation", component: SimulationView },
     { path: "/settings", name: "settings", component: SettingsView },
