@@ -2,6 +2,7 @@ package llm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,10 +11,17 @@ import (
 	"github.com/ollama/ollama/api"
 )
 
+// ErrEmbeddingUnavailable is returned when no embedding model is configured.
+var ErrEmbeddingUnavailable = errors.New("embedding unavailable: no embedding model configured")
+
 // LLMClient is the interface that all LLM backends must satisfy.
 type LLMClient interface {
 	// Generate sends a prompt to the LLM and returns the complete response text.
 	Generate(ctx context.Context, prompt string) (string, error)
+
+	// Embed returns a vector embedding for the given text.
+	// Returns ErrEmbeddingUnavailable when no embedding model is configured.
+	Embed(ctx context.Context, text string) ([]float32, error)
 
 	// Reachable checks whether the LLM service is reachable.
 	Reachable(ctx context.Context) (bool, error)
@@ -24,11 +32,12 @@ type LLMClient interface {
 
 // Config holds configuration for creating an LLM client.
 type Config struct {
-	Provider string        // "ollama" (default) | "openai-compatible"
-	BaseURL  string
-	Model    string
-	Timeout  time.Duration
-	APIKey   string // Cloud LLM only
+	Provider       string        // "ollama" (default) | "openai-compatible"
+	BaseURL        string
+	Model          string
+	EmbeddingModel string        // e.g. "nomic-embed-text"; empty disables embedding
+	Timeout        time.Duration
+	APIKey         string // Cloud LLM only
 }
 
 // StatusInfo holds connection and provider status returned by LLMClient.Status.
@@ -55,9 +64,10 @@ func NewClient(cfg Config) (LLMClient, error) {
 
 // Client is the Ollama-backed LLM client.
 type Client struct {
-	baseURL string
-	model   string
-	client  *api.Client
+	baseURL    string
+	model      string
+	embedModel string
+	client     *api.Client
 }
 
 // New creates an Ollama LLM client. Prefer NewClient for provider-agnostic creation.
@@ -69,9 +79,10 @@ func New(cfg Config) (*Client, error) {
 
 	httpClient := &http.Client{Timeout: cfg.Timeout}
 	return &Client{
-		baseURL: cfg.BaseURL,
-		model:   cfg.Model,
-		client:  api.NewClient(parsedURL, httpClient),
+		baseURL:    cfg.BaseURL,
+		model:      cfg.Model,
+		embedModel: cfg.EmbeddingModel,
+		client:     api.NewClient(parsedURL, httpClient),
 	}, nil
 }
 
@@ -114,4 +125,25 @@ func (c *Client) Generate(ctx context.Context, prompt string) (string, error) {
 		return "", err
 	}
 	return response, nil
+}
+
+// Embed returns a vector embedding for the given text using the configured
+// embedding model (e.g. nomic-embed-text). Returns ErrEmbeddingUnavailable
+// when no embedding model is configured.
+func (c *Client) Embed(ctx context.Context, text string) ([]float32, error) {
+	if c.embedModel == "" {
+		return nil, ErrEmbeddingUnavailable
+	}
+
+	resp, err := c.client.Embed(ctx, &api.EmbedRequest{
+		Model: c.embedModel,
+		Input: text,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("ollama embed: %w", err)
+	}
+	if len(resp.Embeddings) == 0 {
+		return nil, fmt.Errorf("ollama embed: empty embeddings response")
+	}
+	return resp.Embeddings[0], nil
 }

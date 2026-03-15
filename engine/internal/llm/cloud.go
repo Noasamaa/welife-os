@@ -17,6 +17,7 @@ type CloudClient struct {
 	baseURL    string
 	apiKey     string
 	model      string
+	embedModel string
 	httpClient *http.Client
 }
 
@@ -43,6 +44,7 @@ func NewCloudClient(cfg Config) (*CloudClient, error) {
 		baseURL:    baseURL,
 		apiKey:     cfg.APIKey,
 		model:      cfg.Model,
+		embedModel: cfg.EmbeddingModel,
 		httpClient: &http.Client{Timeout: timeout},
 	}, nil
 }
@@ -166,4 +168,74 @@ func truncate(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen] + "..."
+}
+
+// embeddingRequest is the request body for /v1/embeddings.
+type embeddingRequest struct {
+	Model string `json:"model"`
+	Input string `json:"input"`
+}
+
+// embeddingResponse is the response body from /v1/embeddings.
+type embeddingResponse struct {
+	Data  []embeddingData `json:"data"`
+	Error *apiError       `json:"error,omitempty"`
+}
+
+type embeddingData struct {
+	Embedding []float32 `json:"embedding"`
+}
+
+// Embed returns a vector embedding using the OpenAI-compatible /v1/embeddings endpoint.
+func (c *CloudClient) Embed(ctx context.Context, text string) ([]float32, error) {
+	if c.embedModel == "" {
+		return nil, ErrEmbeddingUnavailable
+	}
+
+	reqBody := embeddingRequest{
+		Model: c.embedModel,
+		Input: text,
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("cloud embed: marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/v1/embeddings", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("cloud embed: create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("cloud embed: request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("cloud embed: read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("cloud embed: HTTP %d: %s", resp.StatusCode, truncate(string(respBody), 200))
+	}
+
+	var embedResp embeddingResponse
+	if err := json.Unmarshal(respBody, &embedResp); err != nil {
+		return nil, fmt.Errorf("cloud embed: parse response: %w", err)
+	}
+
+	if embedResp.Error != nil {
+		return nil, fmt.Errorf("cloud embed: API error: %s", embedResp.Error.Message)
+	}
+
+	if len(embedResp.Data) == 0 || len(embedResp.Data[0].Embedding) == 0 {
+		return nil, fmt.Errorf("cloud embed: empty embedding in response")
+	}
+
+	return embedResp.Data[0].Embedding, nil
 }

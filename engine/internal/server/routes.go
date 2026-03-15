@@ -93,6 +93,10 @@ func (s *Server) routes() http.Handler {
 	router.Get("/api/v1/simulation/sessions", s.handleListSimulations)
 	router.Get("/api/v1/simulation/sessions/{id}", s.handleGetSimulation)
 
+	// Embedding / semantic search endpoints
+	router.Post("/api/v1/embeddings/build", s.handleBuildEmbeddings)
+	router.Post("/api/v1/search/semantic", s.handleSemanticSearch)
+
 	return router
 }
 

@@ -25,14 +25,15 @@ import (
 const Version = "1.0.0"
 
 type Config struct {
-	Host          string
-	Port          int
-	DatabasePath  string
-	DatabaseKey   string
-	LLMProvider   string
-	LLMBaseURL    string
-	LLMModel      string
-	LLMAPIKey     string
+	Host           string
+	Port           int
+	DatabasePath   string
+	DatabaseKey    string
+	LLMProvider    string
+	LLMBaseURL     string
+	LLMModel       string
+	LLMAPIKey      string
+	EmbeddingModel string
 }
 
 func (c Config) Addr() string {
@@ -52,6 +53,7 @@ type Server struct {
 	coachAgent      *agent.CoachAgent
 	simEngine       *simulation.Engine
 	reminderService *reminder.Service
+	vectorStore     storage.VectorStore
 	router      http.Handler
 	httpServer  *http.Server
 	shutdown    sync.Once
@@ -68,11 +70,12 @@ func New(cfg Config) (*Server, error) {
 	}
 
 	llmClient, err := llm.NewClient(llm.Config{
-		Provider: cfg.LLMProvider,
-		BaseURL:  cfg.LLMBaseURL,
-		Model:    cfg.LLMModel,
-		Timeout:  120 * time.Second,
-		APIKey:   cfg.LLMAPIKey,
+		Provider:       cfg.LLMProvider,
+		BaseURL:        cfg.LLMBaseURL,
+		Model:          cfg.LLMModel,
+		EmbeddingModel: cfg.EmbeddingModel,
+		Timeout:        120 * time.Second,
+		APIKey:         cfg.LLMAPIKey,
 	})
 	if err != nil {
 		_ = store.Close()
@@ -84,6 +87,7 @@ func New(cfg Config) (*Server, error) {
 		store:       store,
 		llmClient:   llmClient,
 		taskManager: task.NewManager(2),
+		vectorStore: storage.NewSqliteVecStore(store.DB()),
 	}
 
 	// Initialize parser registry with all built-in parsers

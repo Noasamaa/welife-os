@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-const currentSchemaVersion = 5
+const currentSchemaVersion = 6
 
 // migrateV1toV2 adds Phase 1 tables for conversations, messages, participants,
 // attachments, import jobs, entities, and relationships.
@@ -229,6 +229,15 @@ var migrateV4toV5 = []string{
 	`UPDATE schema_state SET version = 5, updated_at = CURRENT_TIMESTAMP WHERE id = 1;`,
 }
 
+// migrateV5toV6 adds the vec_messages virtual table for semantic vector search.
+var migrateV5toV6 = []string{
+	`CREATE VIRTUAL TABLE IF NOT EXISTS vec_messages USING vec0(
+    embedding float[768],
+    +source_id text
+);`,
+	`UPDATE schema_state SET version = 6, updated_at = CURRENT_TIMESTAMP WHERE id = 1;`,
+}
+
 // migrate checks the current schema version and applies pending migrations.
 func migrate(ctx context.Context, db *sql.DB) error {
 	var version int
@@ -272,6 +281,15 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		for _, stmt := range migrateV4toV5 {
 			if _, err := db.ExecContext(ctx, stmt); err != nil {
 				return fmt.Errorf("migrating v4 to v5: %w", err)
+			}
+		}
+		version = 5
+	}
+
+	if version == 5 {
+		for _, stmt := range migrateV5toV6 {
+			if _, err := db.ExecContext(ctx, stmt); err != nil {
+				return fmt.Errorf("migrating v5 to v6: %w", err)
 			}
 		}
 	}
