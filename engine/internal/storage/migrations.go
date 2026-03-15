@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-const currentSchemaVersion = 6
+const currentSchemaVersion = 7
 
 // migrateV1toV2 adds Phase 1 tables for conversations, messages, participants,
 // attachments, import jobs, entities, and relationships.
@@ -238,6 +238,15 @@ var migrateV5toV6 = []string{
 	`UPDATE schema_state SET version = 6, updated_at = CURRENT_TIMESTAMP WHERE id = 1;`,
 }
 
+// migrateV6toV7 adds the system_settings key-value table for runtime configuration.
+var migrateV6toV7 = []string{
+	`CREATE TABLE IF NOT EXISTS system_settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);`,
+	`UPDATE schema_state SET version = 7, updated_at = CURRENT_TIMESTAMP WHERE id = 1;`,
+}
+
 // migrate checks the current schema version and applies pending migrations.
 func migrate(ctx context.Context, db *sql.DB) error {
 	var version int
@@ -290,6 +299,15 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		for _, stmt := range migrateV5toV6 {
 			if _, err := db.ExecContext(ctx, stmt); err != nil {
 				return fmt.Errorf("migrating v5 to v6: %w", err)
+			}
+		}
+		version = 6
+	}
+
+	if version == 6 {
+		for _, stmt := range migrateV6toV7 {
+			if _, err := db.ExecContext(ctx, stmt); err != nil {
+				return fmt.Errorf("migrating v6 to v7: %w", err)
 			}
 		}
 	}
