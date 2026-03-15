@@ -26,7 +26,7 @@ import {
   VisualMapComponent,
   CalendarComponent,
 } from "echarts/components";
-import type { ReportSection } from "../types/report";
+import type { ReportChartData, ReportSection } from "../types/report";
 
 use([
   CanvasRenderer,
@@ -46,13 +46,17 @@ const props = defineProps<{
 }>();
 
 const hasValidData = computed(() => {
-  return props.section.data != null && typeof props.section.data === "object";
+  return isChartData(props.section.data);
 });
 
 const chartOption = computed(() => {
   if (!hasValidData.value) return {};
-  return props.section.data;
+  return props.section.data as ReportChartData;
 });
+
+function isChartData(value: unknown): value is ReportChartData {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 </script>
 
 <style scoped>

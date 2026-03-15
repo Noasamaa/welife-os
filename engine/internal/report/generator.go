@@ -133,6 +133,7 @@ func (g *Generator) executeGeneration(ctx context.Context, reportID, conversatio
 		Sections: sections,
 		Summary:  summary,
 	}
+	content = sanitizeReportContent(content)
 
 	contentJSON, err := json.Marshal(content)
 	if err != nil {

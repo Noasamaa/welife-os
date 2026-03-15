@@ -1,10 +1,11 @@
 import { onMounted, onUnmounted, ref } from "vue";
 
-import { API_BASE_URL, fetchSystemStatus } from "../services/api";
+import { fetchSystemStatus, getAPIBaseURL } from "../services/api";
 import type { SystemStatusResponse } from "../types/api";
 
 type BackendStatus = "checking" | "healthy" | "unreachable";
 
+const apiBaseUrl = ref("/api");
 const status = ref<BackendStatus>("checking");
 const systemStatus = ref<SystemStatusResponse | null>(null);
 const errorMessage = ref<string | null>(null);
@@ -16,6 +17,7 @@ export function useBackendHealth() {
   async function checkHealth(): Promise<void> {
     status.value = "checking";
     try {
+      apiBaseUrl.value = await getAPIBaseURL();
       systemStatus.value = await fetchSystemStatus();
       status.value = systemStatus.value.backend.status === "ok" ? "healthy" : "unreachable";
       errorMessage.value = null;
@@ -47,7 +49,7 @@ export function useBackendHealth() {
   });
 
   return {
-    apiBaseUrl: API_BASE_URL,
+    apiBaseUrl,
     checkHealth,
     errorMessage,
     status,

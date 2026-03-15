@@ -13,18 +13,38 @@ import type { Report, ReportType } from "../types/report";
 import type { ActionItem, ActionPlanResponse } from "../types/coach";
 import type { ReminderRule, Reminder } from "../types/reminder";
 import type { PersonProfile, SimulationSession, SimulationDetail } from "../types/simulation";
-import { isTauriRuntime } from "./tauri";
+import { getBackendRuntime } from "./tauri";
 
-const DESKTOP_API_BASE_URL = "http://127.0.0.1:18080";
+export async function getAPIBaseURL(): Promise<string> {
+  const runtime = await getBackendRuntime();
+  return runtime.baseUrl || "/api";
+}
 
-export const API_BASE_URL = isTauriRuntime() ? DESKTOP_API_BASE_URL : "";
+async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  const runtime = await getBackendRuntime();
+  const headers = new Headers(init?.headers);
+  if (runtime.apiToken) {
+    headers.set("X-WeLife-API-Token", runtime.apiToken);
+  }
 
-function apiUrl(path: string): string {
-  return `${API_BASE_URL}${path}`;
+  return fetch(`${runtime.baseUrl}${path}`, {
+    ...init,
+    headers,
+  });
+}
+
+async function readError(response: Response, fallback: string): Promise<string> {
+  const text = (await response.text()).trim();
+  return text || fallback;
+}
+
+function appendConversationQuery(path: string, conversationID: string): string {
+  const params = new URLSearchParams({ conversation_id: conversationID });
+  return `${path}?${params.toString()}`;
 }
 
 export async function fetchSystemStatus(): Promise<SystemStatusResponse> {
-  const response = await fetch(apiUrl("/api/v1/system/status"));
+  const response = await apiFetch("/api/v1/system/status");
   if (!response.ok) {
     throw new Error(`failed to fetch system status: ${response.status}`);
   }
@@ -33,24 +53,22 @@ export async function fetchSystemStatus(): Promise<SystemStatusResponse> {
 }
 
 export async function fetchLLMConfig(): Promise<LLMConfig> {
-  const res = await fetch(apiUrl("/api/v1/system/llm-config"));
-  if (!res.ok) throw new Error(`fetch llm config: ${res.status}`);
-  return (await res.json()) as LLMConfig;
+  const response = await apiFetch("/api/v1/system/llm-config");
+  if (!response.ok) throw new Error(`fetch llm config: ${response.status}`);
+  return (await response.json()) as LLMConfig;
 }
 
 export async function updateLLMConfig(patch: Partial<LLMConfig>): Promise<void> {
-  const res = await fetch(apiUrl("/api/v1/system/llm-config"), {
+  const response = await apiFetch("/api/v1/system/llm-config", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(patch),
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `update llm config: ${res.status}`);
+  if (!response.ok) {
+    throw new Error(await readError(response, `update llm config: ${response.status}`));
   }
 }
 
-// Import
 export async function uploadFile(
   file: File,
   format?: string,
@@ -61,74 +79,70 @@ export async function uploadFile(
   if (format) form.append("format", format);
   if (selfName) form.append("self_name", selfName);
 
-  const res = await fetch(apiUrl("/api/v1/import"), {
+  const response = await apiFetch("/api/v1/import", {
     method: "POST",
     body: form,
   });
-  if (!res.ok) throw new Error(await res.text());
-  return (await res.json()) as ImportResult;
+  if (!response.ok) throw new Error(await readError(response, "upload failed"));
+  return (await response.json()) as ImportResult;
 }
 
 export async function fetchImportJobs(): Promise<ImportJob[]> {
-  const res = await fetch(apiUrl("/api/v1/import/jobs"));
-  if (!res.ok) throw new Error(`fetch jobs: ${res.status}`);
-  return (await res.json()) as ImportJob[];
+  const response = await apiFetch("/api/v1/import/jobs");
+  if (!response.ok) throw new Error(`fetch jobs: ${response.status}`);
+  return (await response.json()) as ImportJob[];
 }
 
-// Conversations
 export async function fetchConversations(): Promise<Conversation[]> {
-  const res = await fetch(apiUrl("/api/v1/conversations"));
-  if (!res.ok) throw new Error(`fetch conversations: ${res.status}`);
-  return (await res.json()) as Conversation[];
+  const response = await apiFetch("/api/v1/conversations");
+  if (!response.ok) throw new Error(`fetch conversations: ${response.status}`);
+  return (await response.json()) as Conversation[];
 }
 
-// Graph
 export async function triggerGraphBuild(
   conversationID: string,
 ): Promise<{ task_id: string }> {
-  const res = await fetch(apiUrl("/api/v1/graph/build"), {
+  const response = await apiFetch("/api/v1/graph/build", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ conversation_id: conversationID }),
   });
-  if (!res.ok) throw new Error(await res.text());
-  return (await res.json()) as { task_id: string };
+  if (!response.ok) throw new Error(await readError(response, "trigger graph build failed"));
+  return (await response.json()) as { task_id: string };
 }
 
 export async function fetchGraphOverview(): Promise<GraphOverview> {
-  const res = await fetch(apiUrl("/api/v1/graph/overview"));
-  if (!res.ok) throw new Error(`fetch graph: ${res.status}`);
-  return (await res.json()) as GraphOverview;
+  const response = await apiFetch("/api/v1/graph/overview");
+  if (!response.ok) throw new Error(`fetch graph: ${response.status}`);
+  return (await response.json()) as GraphOverview;
 }
 
-// Forum
 export async function triggerDebate(
   conversationID: string,
 ): Promise<{ session_id: string; task_id: string }> {
-  const res = await fetch(apiUrl("/api/v1/forum/debate"), {
+  const response = await apiFetch("/api/v1/forum/debate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ conversation_id: conversationID }),
   });
-  if (!res.ok) throw new Error(await res.text());
-  return (await res.json()) as { session_id: string; task_id: string };
+  if (!response.ok) throw new Error(await readError(response, "trigger debate failed"));
+  return (await response.json()) as { session_id: string; task_id: string };
 }
 
 export async function fetchForumSessions(): Promise<ForumSession[]> {
-  const res = await fetch(apiUrl("/api/v1/forum/sessions"));
-  if (!res.ok) throw new Error(`fetch sessions: ${res.status}`);
-  return (await res.json()) as ForumSession[];
+  const response = await apiFetch("/api/v1/forum/sessions");
+  if (!response.ok) throw new Error(`fetch sessions: ${response.status}`);
+  return (await response.json()) as ForumSession[];
 }
 
 export async function fetchForumSession(
   id: string,
 ): Promise<ForumSessionDetail> {
-  const res = await fetch(apiUrl(`/api/v1/forum/sessions/${id}`));
-  if (!res.ok) throw new Error(`fetch session: ${res.status}`);
-  return (await res.json()) as ForumSessionDetail;
+  const response = await apiFetch(`/api/v1/forum/sessions/${id}`);
+  if (!response.ok) throw new Error(`fetch session: ${response.status}`);
+  return (await response.json()) as ForumSessionDetail;
 }
 
-// Reports
 export async function generateReport(
   type: ReportType,
   conversationID: string,
@@ -139,53 +153,52 @@ export async function generateReport(
   if (periodStart) body.period_start = periodStart;
   if (periodEnd) body.period_end = periodEnd;
 
-  const res = await fetch(apiUrl("/api/v1/reports/generate"), {
+  const response = await apiFetch("/api/v1/reports/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await res.text());
-  return (await res.json()) as { report_id: string; task_id: string };
+  if (!response.ok) throw new Error(await readError(response, "generate report failed"));
+  return (await response.json()) as { report_id: string; task_id: string };
 }
 
 export async function fetchReports(): Promise<Report[]> {
-  const res = await fetch(apiUrl("/api/v1/reports"));
-  if (!res.ok) throw new Error(`fetch reports: ${res.status}`);
-  return (await res.json()) as Report[];
+  const response = await apiFetch("/api/v1/reports");
+  if (!response.ok) throw new Error(`fetch reports: ${response.status}`);
+  return (await response.json()) as Report[];
 }
 
 export async function fetchReport(id: string): Promise<Report> {
-  const res = await fetch(apiUrl(`/api/v1/reports/${id}`));
-  if (!res.ok) throw new Error(`fetch report: ${res.status}`);
-  return (await res.json()) as Report;
+  const response = await apiFetch(`/api/v1/reports/${id}`);
+  if (!response.ok) throw new Error(`fetch report: ${response.status}`);
+  return (await response.json()) as Report;
 }
 
 export async function deleteReport(id: string): Promise<void> {
-  const res = await fetch(apiUrl(`/api/v1/reports/${id}`), {
+  const response = await apiFetch(`/api/v1/reports/${id}`, {
     method: "DELETE",
   });
-  if (!res.ok) throw new Error(`delete report: ${res.status}`);
+  if (!response.ok) throw new Error(`delete report: ${response.status}`);
 }
 
-export function reportHTMLUrl(id: string): string {
-  return apiUrl(`/api/v1/reports/${encodeURIComponent(id)}/html`);
+export async function fetchReportExportBlob(id: string, format: "html" | "pdf"): Promise<Blob> {
+  const response = await apiFetch(`/api/v1/reports/${encodeURIComponent(id)}/${format}`);
+  if (!response.ok) {
+    throw new Error(await readError(response, `export report ${format}: ${response.status}`));
+  }
+  return response.blob();
 }
 
-export function reportPDFUrl(id: string): string {
-  return apiUrl(`/api/v1/reports/${encodeURIComponent(id)}/pdf`);
-}
-
-// Coach / Action Items
 export async function generateActionPlan(
   sessionID: string,
 ): Promise<ActionPlanResponse> {
-  const res = await fetch(apiUrl("/api/v1/coach/generate-plan"), {
+  const response = await apiFetch("/api/v1/coach/generate-plan", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ session_id: sessionID }),
   });
-  if (!res.ok) throw new Error(await res.text());
-  return (await res.json()) as ActionPlanResponse;
+  if (!response.ok) throw new Error(await readError(response, "generate action plan failed"));
+  return (await response.json()) as ActionPlanResponse;
 }
 
 export async function fetchActionItems(
@@ -195,114 +208,116 @@ export async function fetchActionItems(
   const params = new URLSearchParams();
   if (status) params.set("status", status);
   if (category) params.set("category", category);
-  const q = params.toString();
-  const res = await fetch(apiUrl(`/api/v1/action-items${q ? "?" + q : ""}`));
-  if (!res.ok) throw new Error(`fetch action items: ${res.status}`);
-  return (await res.json()) as ActionItem[];
+  const suffix = params.toString();
+  const response = await apiFetch(`/api/v1/action-items${suffix ? `?${suffix}` : ""}`);
+  if (!response.ok) throw new Error(`fetch action items: ${response.status}`);
+  return (await response.json()) as ActionItem[];
 }
 
 export async function updateActionItemStatus(
   id: string,
   status: string,
 ): Promise<void> {
-  const res = await fetch(apiUrl(`/api/v1/action-items/${id}`), {
+  const response = await apiFetch(`/api/v1/action-items/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status }),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!response.ok) throw new Error(await readError(response, "update action item failed"));
 }
 
 export async function deleteActionItem(id: string): Promise<void> {
-  const res = await fetch(apiUrl(`/api/v1/action-items/${id}`), {
+  const response = await apiFetch(`/api/v1/action-items/${id}`, {
     method: "DELETE",
   });
-  if (!res.ok) throw new Error(`delete action item: ${res.status}`);
+  if (!response.ok) throw new Error(`delete action item: ${response.status}`);
 }
 
-// Reminders
 export async function fetchPendingReminders(): Promise<Reminder[]> {
-  const res = await fetch(apiUrl("/api/v1/reminders/pending"));
-  if (!res.ok) throw new Error(`fetch reminders: ${res.status}`);
-  return (await res.json()) as Reminder[];
+  const response = await apiFetch("/api/v1/reminders/pending");
+  if (!response.ok) throw new Error(`fetch reminders: ${response.status}`);
+  return (await response.json()) as Reminder[];
 }
 
 export async function markReminderRead(id: string): Promise<void> {
-  const res = await fetch(apiUrl(`/api/v1/reminders/${id}/read`), {
+  const response = await apiFetch(`/api/v1/reminders/${id}/read`, {
     method: "PATCH",
   });
-  if (!res.ok) throw new Error(`mark read: ${res.status}`);
+  if (!response.ok) throw new Error(`mark read: ${response.status}`);
 }
 
 export async function dismissReminder(id: string): Promise<void> {
-  const res = await fetch(apiUrl(`/api/v1/reminders/${id}/dismiss`), {
+  const response = await apiFetch(`/api/v1/reminders/${id}/dismiss`, {
     method: "PATCH",
   });
-  if (!res.ok) throw new Error(`dismiss: ${res.status}`);
+  if (!response.ok) throw new Error(`dismiss: ${response.status}`);
 }
 
 export async function fetchReminderRules(): Promise<ReminderRule[]> {
-  const res = await fetch(apiUrl("/api/v1/reminder-rules"));
-  if (!res.ok) throw new Error(`fetch rules: ${res.status}`);
-  return (await res.json()) as ReminderRule[];
+  const response = await apiFetch("/api/v1/reminder-rules");
+  if (!response.ok) throw new Error(`fetch rules: ${response.status}`);
+  return (await response.json()) as ReminderRule[];
 }
 
 export async function createReminderRule(
   rule: Omit<ReminderRule, "id" | "created_at" | "last_triggered_at">,
 ): Promise<ReminderRule> {
-  const res = await fetch(apiUrl("/api/v1/reminder-rules"), {
+  const response = await apiFetch("/api/v1/reminder-rules", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(rule),
   });
-  if (!res.ok) throw new Error(await res.text());
-  return (await res.json()) as ReminderRule;
+  if (!response.ok) throw new Error(await readError(response, "create reminder rule failed"));
+  return (await response.json()) as ReminderRule;
 }
 
 export async function updateReminderRule(
   id: string,
   enabled: boolean,
 ): Promise<void> {
-  const res = await fetch(apiUrl(`/api/v1/reminder-rules/${id}`), {
+  const response = await apiFetch(`/api/v1/reminder-rules/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ enabled }),
   });
-  if (!res.ok) throw new Error(`update rule: ${res.status}`);
+  if (!response.ok) throw new Error(`update rule: ${response.status}`);
 }
 
 export async function deleteReminderRule(id: string): Promise<void> {
-  const res = await fetch(apiUrl(`/api/v1/reminder-rules/${id}`), {
+  const response = await apiFetch(`/api/v1/reminder-rules/${id}`, {
     method: "DELETE",
   });
-  if (!res.ok) throw new Error(`delete rule: ${res.status}`);
+  if (!response.ok) throw new Error(`delete rule: ${response.status}`);
 }
 
-// Simulation
-export async function buildProfiles(): Promise<{ task_id: string }> {
-  const res = await fetch(apiUrl("/api/v1/simulation/profiles/build"), {
+export async function buildProfiles(conversationID: string): Promise<{ task_id: string }> {
+  const response = await apiFetch("/api/v1/simulation/profiles/build", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ conversation_id: conversationID }),
   });
-  if (!res.ok) throw new Error(await res.text());
-  return (await res.json()) as { task_id: string };
+  if (!response.ok) throw new Error(await readError(response, "build profiles failed"));
+  return (await response.json()) as { task_id: string };
 }
 
-export async function fetchProfiles(): Promise<PersonProfile[]> {
-  const res = await fetch(apiUrl("/api/v1/simulation/profiles"));
-  if (!res.ok) throw new Error(`fetch profiles: ${res.status}`);
-  return (await res.json()) as PersonProfile[];
+export async function fetchProfiles(conversationID: string): Promise<PersonProfile[]> {
+  const response = await apiFetch(appendConversationQuery("/api/v1/simulation/profiles", conversationID));
+  if (!response.ok) throw new Error(`fetch profiles: ${response.status}`);
+  return (await response.json()) as PersonProfile[];
 }
 
 export async function runSimulation(
+  conversationID: string,
   forkDescription: string,
   affectedNodes: string[],
   changes: Record<string, string>,
   steps?: number,
 ): Promise<{ session_id: string; task_id: string }> {
-  const res = await fetch(apiUrl("/api/v1/simulation/run"), {
+  const response = await apiFetch("/api/v1/simulation/run", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      conversation_id: conversationID,
       steps: steps ?? 5,
       fork_point: {
         description: forkDescription,
@@ -311,18 +326,19 @@ export async function runSimulation(
       },
     }),
   });
-  if (!res.ok) throw new Error(await res.text());
-  return (await res.json()) as { session_id: string; task_id: string };
+  if (!response.ok) throw new Error(await readError(response, "run simulation failed"));
+  return (await response.json()) as { session_id: string; task_id: string };
 }
 
-export async function fetchSimulations(): Promise<SimulationSession[]> {
-  const res = await fetch(apiUrl("/api/v1/simulation/sessions"));
-  if (!res.ok) throw new Error(`fetch simulations: ${res.status}`);
-  return (await res.json()) as SimulationSession[];
+export async function fetchSimulations(conversationID: string): Promise<SimulationSession[]> {
+  const response = await apiFetch(appendConversationQuery("/api/v1/simulation/sessions", conversationID));
+  if (!response.ok) throw new Error(`fetch simulations: ${response.status}`);
+  return (await response.json()) as SimulationSession[];
 }
 
-export async function fetchSimulation(id: string): Promise<SimulationDetail> {
-  const res = await fetch(apiUrl(`/api/v1/simulation/sessions/${id}`));
-  if (!res.ok) throw new Error(`fetch simulation: ${res.status}`);
-  return (await res.json()) as SimulationDetail;
+export async function fetchSimulation(id: string, conversationID: string): Promise<SimulationDetail> {
+  const path = appendConversationQuery(`/api/v1/simulation/sessions/${id}`, conversationID);
+  const response = await apiFetch(path);
+  if (!response.ok) throw new Error(`fetch simulation: ${response.status}`);
+  return (await response.json()) as SimulationDetail;
 }

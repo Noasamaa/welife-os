@@ -178,6 +178,9 @@ func (s *Store) GetMessages(ctx context.Context, conversationID string, limit, o
 	if limit <= 0 {
 		limit = 50
 	}
+	if limit > 500 {
+		limit = 500
+	}
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, conversation_id, platform, sender_id, sender_name, content, message_type,
 		       COALESCE(reply_to,''), timestamp

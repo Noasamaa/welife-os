@@ -20,6 +20,7 @@ describe("useBackendHealth", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mocks = mockAllApi();
+    mocks.getAPIBaseURL.mockResolvedValue("http://127.0.0.1:18080");
   });
 
   it("checkHealth sets healthy status on success", async () => {
@@ -66,7 +67,7 @@ describe("useBackendHealth", () => {
     const { useBackendHealth } = await import("../useBackendHealth");
     const { apiBaseUrl } = useBackendHealth();
 
-    expect(typeof apiBaseUrl).toBe("string");
+    expect(typeof apiBaseUrl.value).toBe("string");
   });
 
   it("auto-checks health on mount and starts polling", async () => {

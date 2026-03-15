@@ -181,29 +181,13 @@
             <span class="info-label">当前版本</span>
             <span class="info-value">v1.0.0</span>
           </div>
-          <div v-if="updater.updateAvailable && updater.updateVersion" class="info-row">
-            <span class="info-label">最新版本</span>
-            <span class="info-value">v{{ updater.updateVersion }}</span>
+          <div class="info-row">
+            <span class="info-label">更新通道</span>
+            <span class="info-value">{{ updater.enabled ? "已启用" : "已关闭" }}</span>
           </div>
         </div>
-        <button
-          v-if="!updater.updateAvailable"
-          class="btn-primary test-btn"
-          :disabled="updater.checking"
-          @click="updater.checkForUpdate()"
-        >
-          {{ updater.checking ? "检查中..." : "检查更新" }}
-        </button>
-        <button
-          v-else
-          class="btn-primary test-btn"
-          :disabled="updater.downloading"
-          @click="updater.downloadAndInstall()"
-        >
-          {{ updater.downloading ? "下载中..." : "下载并安装" }}
-        </button>
-        <div v-if="updater.error" class="test-result result-err">
-          {{ updater.error }}
+        <div class="test-result result-err">
+          {{ updater.disabledReason }}
         </div>
       </div>
     </div>

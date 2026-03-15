@@ -9,6 +9,7 @@ type ForkPoint struct {
 
 // SimulationConfig holds the parameters for running a simulation.
 type SimulationConfig struct {
-	Steps     int       `json:"steps"`
-	ForkPoint ForkPoint `json:"fork_point"`
+	ConversationID string    `json:"conversation_id"`
+	Steps          int       `json:"steps"`
+	ForkPoint      ForkPoint `json:"fork_point"`
 }

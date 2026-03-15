@@ -1,9 +1,11 @@
 package server
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -42,63 +44,66 @@ func (s *Server) routes() http.Handler {
 	router := chi.NewRouter()
 	router.Use(devCORSMiddleware)
 	router.Get("/health", s.handleHealth)
-	router.Get("/api/v1/system/status", s.handleSystemStatus)
-	router.Get("/api/v1/system/llm-config", s.handleGetLLMConfig)
-	router.Patch("/api/v1/system/llm-config", s.handleUpdateLLMConfig)
+	router.Route("/api/v1", func(api chi.Router) {
+		api.Use(apiAuthMiddleware)
+		api.Get("/system/status", s.handleSystemStatus)
+		api.Get("/system/llm-config", s.handleGetLLMConfig)
+		api.Patch("/system/llm-config", s.handleUpdateLLMConfig)
 
-	// Import endpoints
-	router.Post("/api/v1/import", s.handleImportUpload)
-	router.Get("/api/v1/import/jobs", s.handleListImportJobs)
-	router.Get("/api/v1/import/jobs/{id}", s.handleGetImportJob)
+		// Import endpoints
+		api.Post("/import", s.handleImportUpload)
+		api.Get("/import/jobs", s.handleListImportJobs)
+		api.Get("/import/jobs/{id}", s.handleGetImportJob)
 
-	// Conversation endpoints
-	router.Get("/api/v1/conversations", s.handleListConversations)
-	router.Get("/api/v1/conversations/{id}", s.handleGetConversation)
-	router.Get("/api/v1/conversations/{id}/messages", s.handleGetMessages)
+		// Conversation endpoints
+		api.Get("/conversations", s.handleListConversations)
+		api.Get("/conversations/{id}", s.handleGetConversation)
+		api.Get("/conversations/{id}/messages", s.handleGetMessages)
 
-	// Graph endpoints
-	router.Post("/api/v1/graph/build", s.handleTriggerGraphBuild)
-	router.Get("/api/v1/graph/overview", s.handleGraphOverview)
+		// Graph endpoints
+		api.Post("/graph/build", s.handleTriggerGraphBuild)
+		api.Get("/graph/overview", s.handleGraphOverview)
 
-	// Forum debate endpoints
-	router.Post("/api/v1/forum/debate", s.handleTriggerDebate)
-	router.Get("/api/v1/forum/sessions", s.handleListForumSessions)
-	router.Get("/api/v1/forum/sessions/{id}", s.handleGetForumSession)
+		// Forum debate endpoints
+		api.Post("/forum/debate", s.handleTriggerDebate)
+		api.Get("/forum/sessions", s.handleListForumSessions)
+		api.Get("/forum/sessions/{id}", s.handleGetForumSession)
 
-	// Report endpoints
-	router.Post("/api/v1/reports/generate", s.handleGenerateReport)
-	router.Get("/api/v1/reports", s.handleListReports)
-	router.Get("/api/v1/reports/{id}", s.handleGetReport)
-	router.Delete("/api/v1/reports/{id}", s.handleDeleteReport)
-	router.Get("/api/v1/reports/{id}/html", s.handleExportReportHTML)
-	router.Get("/api/v1/reports/{id}/pdf", s.handleExportReportPDF)
+		// Report endpoints
+		api.Post("/reports/generate", s.handleGenerateReport)
+		api.Get("/reports", s.handleListReports)
+		api.Get("/reports/{id}", s.handleGetReport)
+		api.Delete("/reports/{id}", s.handleDeleteReport)
+		api.Get("/reports/{id}/html", s.handleExportReportHTML)
+		api.Get("/reports/{id}/pdf", s.handleExportReportPDF)
 
-	// Coach / Action Items endpoints
-	router.Post("/api/v1/coach/generate-plan", s.handleGenerateActionPlan)
-	router.Get("/api/v1/action-items", s.handleListActionItems)
-	router.Get("/api/v1/action-items/{id}", s.handleGetActionItem)
-	router.Patch("/api/v1/action-items/{id}", s.handleUpdateActionItem)
-	router.Delete("/api/v1/action-items/{id}", s.handleDeleteActionItem)
+		// Coach / Action Items endpoints
+		api.Post("/coach/generate-plan", s.handleGenerateActionPlan)
+		api.Get("/action-items", s.handleListActionItems)
+		api.Get("/action-items/{id}", s.handleGetActionItem)
+		api.Patch("/action-items/{id}", s.handleUpdateActionItem)
+		api.Delete("/action-items/{id}", s.handleDeleteActionItem)
 
-	// Reminder endpoints
-	router.Get("/api/v1/reminders/pending", s.handlePendingReminders)
-	router.Patch("/api/v1/reminders/{id}/read", s.handleMarkReminderRead)
-	router.Patch("/api/v1/reminders/{id}/dismiss", s.handleDismissReminder)
-	router.Get("/api/v1/reminder-rules", s.handleListReminderRules)
-	router.Post("/api/v1/reminder-rules", s.handleCreateReminderRule)
-	router.Patch("/api/v1/reminder-rules/{id}", s.handleUpdateReminderRule)
-	router.Delete("/api/v1/reminder-rules/{id}", s.handleDeleteReminderRule)
+		// Reminder endpoints
+		api.Get("/reminders/pending", s.handlePendingReminders)
+		api.Patch("/reminders/{id}/read", s.handleMarkReminderRead)
+		api.Patch("/reminders/{id}/dismiss", s.handleDismissReminder)
+		api.Get("/reminder-rules", s.handleListReminderRules)
+		api.Post("/reminder-rules", s.handleCreateReminderRule)
+		api.Patch("/reminder-rules/{id}", s.handleUpdateReminderRule)
+		api.Delete("/reminder-rules/{id}", s.handleDeleteReminderRule)
 
-	// Simulation endpoints
-	router.Post("/api/v1/simulation/profiles/build", s.handleBuildProfiles)
-	router.Get("/api/v1/simulation/profiles", s.handleListProfiles)
-	router.Post("/api/v1/simulation/run", s.handleRunSimulation)
-	router.Get("/api/v1/simulation/sessions", s.handleListSimulations)
-	router.Get("/api/v1/simulation/sessions/{id}", s.handleGetSimulation)
+		// Simulation endpoints
+		api.Post("/simulation/profiles/build", s.handleBuildProfiles)
+		api.Get("/simulation/profiles", s.handleListProfiles)
+		api.Post("/simulation/run", s.handleRunSimulation)
+		api.Get("/simulation/sessions", s.handleListSimulations)
+		api.Get("/simulation/sessions/{id}", s.handleGetSimulation)
 
-	// Embedding / semantic search endpoints
-	router.Post("/api/v1/embeddings/build", s.handleBuildEmbeddings)
-	router.Post("/api/v1/search/semantic", s.handleSemanticSearch)
+		// Embedding / semantic search endpoints
+		api.Post("/embeddings/build", s.handleBuildEmbeddings)
+		api.Post("/search/semantic", s.handleSemanticSearch)
+	})
 
 	return router
 }
@@ -118,11 +123,31 @@ func devCORSMiddleware(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-WeLife-API-Token")
 		}
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+const apiTokenHeader = "X-WeLife-API-Token"
+
+func apiAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		expectedToken, ok := os.LookupEnv("WELIFE_API_TOKEN")
+		if !ok || strings.TrimSpace(expectedToken) == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		providedToken := r.Header.Get(apiTokenHeader)
+		if subtle.ConstantTimeCompare([]byte(providedToken), []byte(expectedToken)) != 1 {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 			return
 		}
 

@@ -1,67 +1,31 @@
 import { ref } from "vue";
-import { isTauriRuntime } from "../services/tauri";
+
+const updaterDisabledReason = "当前构建未启用签名更新，已关闭在线更新入口。";
 
 export function useUpdater() {
+  const enabled = ref(false);
   const updateAvailable = ref(false);
   const updateVersion = ref("");
   const checking = ref(false);
   const downloading = ref(false);
-  const error = ref<string | null>(null);
-
-  let cachedUpdate: { downloadAndInstall: () => Promise<void> } | null = null;
+  const disabledReason = ref(updaterDisabledReason);
+  const error = ref<string | null>(updaterDisabledReason);
 
   async function checkForUpdate(): Promise<void> {
-    if (!isTauriRuntime()) {
-      error.value = "仅在桌面客户端中可用";
-      return;
-    }
-
-    checking.value = true;
-    error.value = null;
-    updateAvailable.value = false;
-    updateVersion.value = "";
-    cachedUpdate = null;
-
-    try {
-      const { check } = await import("@tauri-apps/plugin-updater");
-      const update = await check();
-      if (update && update.version) {
-        updateAvailable.value = true;
-        updateVersion.value = update.version;
-        cachedUpdate = update;
-      }
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "检查更新失败";
-      error.value = message;
-    } finally {
-      checking.value = false;
-    }
+    error.value = updaterDisabledReason;
   }
 
   async function downloadAndInstall(): Promise<void> {
-    if (!cachedUpdate) {
-      error.value = "没有可用的更新";
-      return;
-    }
-
-    downloading.value = true;
-    error.value = null;
-
-    try {
-      await cachedUpdate.downloadAndInstall();
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "下载安装失败";
-      error.value = message;
-    } finally {
-      downloading.value = false;
-    }
+    error.value = updaterDisabledReason;
   }
 
   return {
+    enabled,
     updateAvailable,
     updateVersion,
     checking,
     downloading,
+    disabledReason,
     error,
     checkForUpdate,
     downloadAndInstall,

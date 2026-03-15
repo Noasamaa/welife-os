@@ -79,7 +79,7 @@ describe("ReportViewer", () => {
             title: "Key Contacts",
             type: "list",
             chart_type: undefined,
-            data: null,
+            data: undefined,
             items: [
               { title: "Alice", description: "Friend" },
               { title: "Bob", description: "Colleague" },
@@ -99,7 +99,7 @@ describe("ReportViewer", () => {
     const wrapper = mountViewer(
       makeContent({
         sections: [
-          { title: "Summary", type: "text", chart_type: undefined, data: null, items: [], narrative: "Great progress this week." },
+          { title: "Summary", type: "text", chart_type: undefined, data: undefined, items: [], narrative: "Great progress this week." },
         ],
       }),
     );

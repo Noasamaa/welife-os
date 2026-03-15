@@ -17,11 +17,15 @@ export function useSimulation() {
   const building = ref(false);
   const error = ref<string | null>(null);
 
-  async function loadProfiles() {
+  async function loadProfiles(conversationID: string) {
+    if (!conversationID) {
+      profiles.value = [];
+      return;
+    }
     loading.value = true;
     error.value = null;
     try {
-      profiles.value = await fetchProfiles();
+      profiles.value = await fetchProfiles(conversationID);
     } catch (e: unknown) {
       error.value = e instanceof Error ? e.message : "加载人物画像失败";
     } finally {
@@ -29,11 +33,15 @@ export function useSimulation() {
     }
   }
 
-  async function buildAllProfiles(): Promise<{ task_id: string } | null> {
+  async function buildAllProfiles(conversationID: string): Promise<{ task_id: string } | null> {
+    if (!conversationID) {
+      error.value = "请先选择一个对话";
+      return null;
+    }
     building.value = true;
     error.value = null;
     try {
-      return await buildProfiles();
+      return await buildProfiles(conversationID);
     } catch (e: unknown) {
       error.value = e instanceof Error ? e.message : "构建画像失败";
       return null;
@@ -42,11 +50,16 @@ export function useSimulation() {
     }
   }
 
-  async function loadSessions() {
+  async function loadSessions(conversationID: string) {
+    if (!conversationID) {
+      sessions.value = [];
+      currentSession.value = null;
+      return;
+    }
     loading.value = true;
     error.value = null;
     try {
-      sessions.value = await fetchSimulations();
+      sessions.value = await fetchSimulations(conversationID);
     } catch (e: unknown) {
       error.value = e instanceof Error ? e.message : "加载模拟列表失败";
     } finally {
@@ -54,11 +67,15 @@ export function useSimulation() {
     }
   }
 
-  async function loadSession(id: string) {
+  async function loadSession(id: string, conversationID: string) {
+    if (!conversationID) {
+      currentSession.value = null;
+      return;
+    }
     loading.value = true;
     error.value = null;
     try {
-      currentSession.value = await fetchSimulation(id);
+      currentSession.value = await fetchSimulation(id, conversationID);
     } catch (e: unknown) {
       error.value = e instanceof Error ? e.message : "加载模拟详情失败";
     } finally {
@@ -67,16 +84,24 @@ export function useSimulation() {
   }
 
   async function startSimulation(
+    conversationID: string,
     forkDescription: string,
     affectedNodes: string[],
     changes: Record<string, string>,
     steps?: number,
   ) {
+    if (!conversationID) {
+      error.value = "请先选择一个对话";
+      return null;
+    }
     running.value = true;
     error.value = null;
     try {
-      const result = await runSimulation(forkDescription, affectedNodes, changes, steps);
-      await Promise.all([loadSessions(), loadSession(result.session_id)]);
+      const result = await runSimulation(conversationID, forkDescription, affectedNodes, changes, steps);
+      await Promise.all([
+        loadSessions(conversationID),
+        loadSession(result.session_id, conversationID),
+      ]);
       return result;
     } catch (e: unknown) {
       error.value = e instanceof Error ? e.message : "启动模拟失败";

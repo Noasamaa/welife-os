@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-const currentSchemaVersion = 7
+const currentSchemaVersion = 8
 
 // migrateV1toV2 adds Phase 1 tables for conversations, messages, participants,
 // attachments, import jobs, entities, and relationships.
@@ -247,6 +247,14 @@ var migrateV6toV7 = []string{
 	`UPDATE schema_state SET version = 7, updated_at = CURRENT_TIMESTAMP WHERE id = 1;`,
 }
 
+// migrateV7toV8 scopes simulation sessions and profile queries by conversation.
+var migrateV7toV8 = []string{
+	`ALTER TABLE simulation_sessions ADD COLUMN conversation_id TEXT NOT NULL DEFAULT '';`,
+	`CREATE INDEX IF NOT EXISTS idx_simulation_sessions_conversation ON simulation_sessions(conversation_id);`,
+	`CREATE INDEX IF NOT EXISTS idx_person_profiles_source_conversation ON person_profiles(source_conversation_ids);`,
+	`UPDATE schema_state SET version = 8, updated_at = CURRENT_TIMESTAMP WHERE id = 1;`,
+}
+
 // migrate checks the current schema version and applies pending migrations.
 func migrate(ctx context.Context, db *sql.DB) error {
 	var version int
@@ -311,6 +319,15 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			}
 		}
 		version = 7
+	}
+
+	if version == 7 {
+		for _, stmt := range migrateV7toV8 {
+			if _, err := db.ExecContext(ctx, stmt); err != nil {
+				return fmt.Errorf("migrating v7 to v8: %w", err)
+			}
+		}
+		version = 8
 	}
 
 	return nil

@@ -40,9 +40,14 @@ func (t *GraphSearchTool) Execute(ctx context.Context, params map[string]string)
 	var entities []storage.Entity
 	var err error
 
-	if entityType != "" {
+	switch {
+	case conversationID != "" && entityType != "":
+		entities, err = t.store.FindEntitiesByTypeInConversation(ctx, entityType, conversationID)
+	case conversationID != "":
+		entities, err = t.store.ListEntitiesByConversation(ctx, conversationID)
+	case entityType != "":
 		entities, err = t.store.FindEntitiesByType(ctx, entityType)
-	} else {
+	default:
 		entities, err = t.store.ListEntities(ctx)
 	}
 	if err != nil {
@@ -59,24 +64,56 @@ func (t *GraphSearchTool) Execute(ctx context.Context, params map[string]string)
 		}
 		entities = filtered
 	}
+	var rels []storage.Relationship
 	if conversationID != "" {
-		var filtered []storage.Entity
-		for _, e := range entities {
-			if e.SourceConversation == conversationID {
-				filtered = append(filtered, e)
+		rels, err = t.store.ListRelationshipsByConversation(ctx, conversationID)
+		if err != nil {
+			return "", fmt.Errorf("querying relationships: %w", err)
+		}
+	} else {
+		entityIDs := make(map[string]struct{}, len(entities))
+		seenRelationships := make(map[string]struct{})
+		for _, entity := range entities {
+			entityIDs[entity.ID] = struct{}{}
+		}
+		for _, entity := range entities {
+			relationships, relErr := t.store.GetRelationships(ctx, entity.ID)
+			if relErr != nil {
+				continue
+			}
+			for _, relationship := range relationships {
+				if _, ok := entityIDs[relationship.SourceEntityID]; !ok {
+					continue
+				}
+				if _, ok := entityIDs[relationship.TargetEntityID]; !ok {
+					continue
+				}
+				if _, ok := seenRelationships[relationship.ID]; ok {
+					continue
+				}
+				seenRelationships[relationship.ID] = struct{}{}
+				rels = append(rels, relationship)
 			}
 		}
-		entities = filtered
 	}
 
-	// Get relationships for found entities
-	var rels []storage.Relationship
-	for _, e := range entities {
-		r, err := t.store.GetRelationships(ctx, e.ID)
-		if err != nil {
-			continue
+	if len(rels) > 0 {
+		entityIDs := make(map[string]struct{}, len(entities))
+		for _, entity := range entities {
+			entityIDs[entity.ID] = struct{}{}
 		}
-		rels = append(rels, r...)
+
+		filtered := rels[:0]
+		for _, relationship := range rels {
+			if _, ok := entityIDs[relationship.SourceEntityID]; !ok {
+				continue
+			}
+			if _, ok := entityIDs[relationship.TargetEntityID]; !ok {
+				continue
+			}
+			filtered = append(filtered, relationship)
+		}
+		rels = filtered
 	}
 
 	result := map[string]any{

@@ -41,23 +41,23 @@ func (c Config) Addr() string {
 }
 
 type Server struct {
-	config      Config
-	store       *storage.Store
-	llmClient   *llm.SwappableClient
-	taskManager *task.Manager
-	importer    *importer.Service
-	graphEngine *graph.Engine
-	forumEngine *forum.Engine
+	config          Config
+	store           *storage.Store
+	llmClient       *llm.SwappableClient
+	taskManager     *task.Manager
+	importer        *importer.Service
+	graphEngine     *graph.Engine
+	forumEngine     *forum.Engine
 	reportGenerator *report.Generator
 	renderer        *report.Renderer
 	coachAgent      *agent.CoachAgent
 	simEngine       *simulation.Engine
 	reminderService *reminder.Service
 	vectorStore     storage.VectorStore
-	router      http.Handler
-	httpServer  *http.Server
-	shutdown    sync.Once
-	shutdownErr error
+	router          http.Handler
+	httpServer      *http.Server
+	shutdown        sync.Once
+	shutdownErr     error
 }
 
 func New(cfg Config) (*Server, error) {
@@ -69,18 +69,8 @@ func New(cfg Config) (*Server, error) {
 		return nil, err
 	}
 
-	// Build initial LLM config from env, then override with DB settings if present.
-	llmCfg := llm.Config{
-		Provider:       cfg.LLMProvider,
-		BaseURL:        cfg.LLMBaseURL,
-		Model:          cfg.LLMModel,
-		EmbeddingModel: cfg.EmbeddingModel,
-		Timeout:        120 * time.Second,
-		APIKey:         cfg.LLMAPIKey,
-	}
-	llmCfg = overrideLLMConfigFromDB(store, llmCfg)
-
-	rawClient, err := llm.NewClient(llmCfg)
+	baseLLMCfg := baseLLMConfig(cfg)
+	rawClient, err := loadInitialLLMClient(store, baseLLMCfg)
 	if err != nil {
 		_ = store.Close()
 		return nil, err
@@ -212,9 +202,36 @@ func overrideLLMConfigFromDB(store *storage.Store, base llm.Config) llm.Config {
 		log.Printf("llm-config: failed to load DB settings: %v", err)
 		return base
 	}
-	if len(settings) == 0 {
-		return base
+	return applySettingsToLLMConfig(base, settings)
+}
+
+func baseLLMConfig(cfg Config) llm.Config {
+	return llm.Config{
+		Provider:       cfg.LLMProvider,
+		BaseURL:        cfg.LLMBaseURL,
+		Model:          cfg.LLMModel,
+		EmbeddingModel: cfg.EmbeddingModel,
+		Timeout:        120 * time.Second,
+		APIKey:         cfg.LLMAPIKey,
 	}
+}
+
+func loadInitialLLMClient(store *storage.Store, base llm.Config) (llm.LLMClient, error) {
+	cfg := overrideLLMConfigFromDB(store, base)
+	client, err := llm.NewClient(cfg)
+	if err == nil {
+		return client, nil
+	}
+
+	log.Printf("llm-config: persisted config invalid, falling back to base config: %v", err)
+	fallback, fallbackErr := llm.NewClient(base)
+	if fallbackErr != nil {
+		return nil, fmt.Errorf("init fallback LLM client: %w", fallbackErr)
+	}
+	return fallback, nil
+}
+
+func applySettingsToLLMConfig(base llm.Config, settings map[string]string) llm.Config {
 	if v, ok := settings["llm_provider"]; ok {
 		base.Provider = v
 	}
@@ -233,18 +250,21 @@ func overrideLLMConfigFromDB(store *storage.Store, base llm.Config) llm.Config {
 	return base
 }
 
+func (s *Server) loadLLMConfig(ctx context.Context) (llm.Config, error) {
+	settings, err := s.store.GetSettings(ctx, llmSettingKeys)
+	if err != nil {
+		return llm.Config{}, fmt.Errorf("load llm settings: %w", err)
+	}
+	return applySettingsToLLMConfig(baseLLMConfig(s.config), settings), nil
+}
+
 // swapLLMClient rebuilds the LLM client from DB settings (falling back to
 // the original env config) and hot-swaps it into the running server.
 func (s *Server) swapLLMClient(ctx context.Context) error {
-	base := llm.Config{
-		Provider:       s.config.LLMProvider,
-		BaseURL:        s.config.LLMBaseURL,
-		Model:          s.config.LLMModel,
-		EmbeddingModel: s.config.EmbeddingModel,
-		Timeout:        120 * time.Second,
-		APIKey:         s.config.LLMAPIKey,
+	cfg, err := s.loadLLMConfig(ctx)
+	if err != nil {
+		return err
 	}
-	cfg := overrideLLMConfigFromDB(s.store, base)
 
 	newClient, err := llm.NewClient(cfg)
 	if err != nil {

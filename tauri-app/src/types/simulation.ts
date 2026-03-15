@@ -12,6 +12,7 @@ export interface PersonProfile {
 
 export interface SimulationSession {
   id: string;
+  conversation_id: string;
   task_id: string;
   fork_description: string;
   status: "running" | "completed" | "failed";
