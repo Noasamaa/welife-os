@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-const currentSchemaVersion = 3
+const currentSchemaVersion = 4
 
 // migrateV1toV2 adds Phase 1 tables for conversations, messages, participants,
 // attachments, import jobs, entities, and relationships.
@@ -126,6 +126,28 @@ var migrateV2toV3 = []string{
 	`UPDATE schema_state SET version = 3, updated_at = CURRENT_TIMESTAMP WHERE id = 1;`,
 }
 
+// migrateV3toV4 adds the reports table for generated life reports.
+var migrateV3toV4 = []string{
+	`CREATE TABLE IF NOT EXISTS reports (
+    id TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
+    conversation_id TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'running',
+    title TEXT NOT NULL DEFAULT '',
+    content TEXT NOT NULL DEFAULT '{}',
+    period_start TEXT NOT NULL,
+    period_end TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TEXT,
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id)
+);`,
+	`CREATE INDEX IF NOT EXISTS idx_reports_type ON reports(type);`,
+	`CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);`,
+	`CREATE INDEX IF NOT EXISTS idx_reports_period ON reports(period_start, period_end);`,
+	`UPDATE schema_state SET version = 4, updated_at = CURRENT_TIMESTAMP WHERE id = 1;`,
+}
+
 // migrate checks the current schema version and applies pending migrations.
 func migrate(ctx context.Context, db *sql.DB) error {
 	var version int
@@ -151,6 +173,15 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		for _, stmt := range migrateV2toV3 {
 			if _, err := db.ExecContext(ctx, stmt); err != nil {
 				return fmt.Errorf("migrating v2 to v3: %w", err)
+			}
+		}
+		version = 3
+	}
+
+	if version == 3 {
+		for _, stmt := range migrateV3toV4 {
+			if _, err := db.ExecContext(ctx, stmt); err != nil {
+				return fmt.Errorf("migrating v3 to v4: %w", err)
 			}
 		}
 	}

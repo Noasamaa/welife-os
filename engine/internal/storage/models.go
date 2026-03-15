@@ -115,3 +115,28 @@ type ForumMessageRecord struct {
 	Confidence float64 `json:"confidence"`
 	CreatedAt  string  `json:"created_at"`
 }
+
+// Report represents a generated life report.
+type Report struct {
+	ID             string `json:"id"`
+	Type           string `json:"type"`
+	ConversationID string `json:"conversation_id"`
+	TaskID         string `json:"task_id"`
+	Status         string `json:"status"`
+	Title          string `json:"title"`
+	Content        string `json:"content"`
+	PeriodStart    string `json:"period_start"`
+	PeriodEnd      string `json:"period_end"`
+	CreatedAt      string `json:"created_at"`
+	CompletedAt    string `json:"completed_at,omitempty"`
+}
+
+// MessageSearchParams defines filters for keyword-based message search.
+type MessageSearchParams struct {
+	Keyword        string
+	ConversationID string
+	SenderName     string
+	After          string
+	Before         string
+	Limit          int
+}
