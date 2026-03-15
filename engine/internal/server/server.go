@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/welife-os/welife-os/engine/internal/agent"
+	"github.com/welife-os/welife-os/engine/internal/forum"
 	"github.com/welife-os/welife-os/engine/internal/graph"
 	"github.com/welife-os/welife-os/engine/internal/importer"
 	"github.com/welife-os/welife-os/engine/internal/llm"
@@ -38,6 +40,7 @@ type Server struct {
 	taskManager *task.Manager
 	importer    *importer.Service
 	graphEngine *graph.Engine
+	forumEngine *forum.Engine
 	router      http.Handler
 	httpServer  *http.Server
 	shutdown    sync.Once
@@ -82,6 +85,16 @@ func New(cfg Config) (*Server, error) {
 	// Initialize graph engine
 	extractor := graph.NewExtractor(llmClient)
 	server.graphEngine = graph.NewEngine(store, extractor, server.taskManager)
+
+	// Initialize forum debate engine
+	agents := []agent.Agent{
+		agent.NewEmotionAgent(llmClient),
+		agent.NewOpportunityAgent(llmClient),
+		agent.NewRiskAgent(llmClient),
+	}
+	moderator := forum.NewModerator(llmClient)
+	server.forumEngine = forum.NewEngine(agents, moderator, store, server.taskManager)
+
 	server.router = server.routes()
 	server.httpServer = &http.Server{
 		Addr:              cfg.Addr(),
