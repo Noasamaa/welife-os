@@ -83,7 +83,11 @@
         :messages="currentSession.messages"
       />
 
-      <div v-else class="empty">辩论进行中，尚无消息记录...</div>
+      <div v-else class="debate-progress">
+        <span class="spinner"></span>
+        <span>辩论进行中...已耗时 {{ debateElapsed }}s</span>
+        <span v-if="currentSession.messages">，已生成 {{ currentSession.messages.length }} 条消息</span>
+      </div>
     </div>
   </section>
 </template>
@@ -108,7 +112,9 @@ const {
 
 const conversations = ref<Conversation[]>([]);
 const selectedConversation = ref("");
+const debateElapsed = ref(0);
 let pollHandle: ReturnType<typeof setInterval> | null = null;
+let elapsedHandle: ReturnType<typeof setInterval> | null = null;
 
 onMounted(async () => {
   await Promise.all([loadSessions(), loadConversations()]);
@@ -116,15 +122,21 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopPolling();
+  stopElapsedTimer();
 });
 
 watch(
   () => currentSession.value?.session,
   (session) => {
     stopPolling();
+    stopElapsedTimer();
     if (!session || session.status !== "running") {
       return;
     }
+    debateElapsed.value = 0;
+    elapsedHandle = setInterval(() => {
+      debateElapsed.value += 1;
+    }, 1000);
     pollHandle = setInterval(() => {
       void Promise.all([loadSession(session.id), loadSessions()]);
     }, 2000);
@@ -135,8 +147,8 @@ watch(
 async function loadConversations() {
   try {
     conversations.value = await fetchConversations();
-  } catch (e: any) {
-    error.value = e.message ?? "加载对话列表失败";
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : "加载对话列表失败";
   }
 }
 
@@ -153,6 +165,13 @@ function stopPolling() {
   if (pollHandle !== null) {
     clearInterval(pollHandle);
     pollHandle = null;
+  }
+}
+
+function stopElapsedTimer() {
+  if (elapsedHandle !== null) {
+    clearInterval(elapsedHandle);
+    elapsedHandle = null;
   }
 }
 
@@ -339,5 +358,33 @@ function statusLabel(status: string): string {
   margin: 0;
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+.debate-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  background: var(--color-info-bg, #e8f4fd);
+  border: 1px solid var(--color-info, #4a90d9);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-info, #2980b9);
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>

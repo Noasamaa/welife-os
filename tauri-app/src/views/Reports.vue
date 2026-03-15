@@ -75,7 +75,10 @@
             <span class="report-title">{{ r.title || r.id.slice(0, 20) }}</span>
             <div class="report-badges">
               <span class="type-badge" :class="`type-${r.type}`">{{ typeLabel(r.type) }}</span>
-              <span class="status-badge" :class="`status-${r.status}`">{{ statusLabel(r.status) }}</span>
+              <span class="status-badge" :class="`status-${r.status}`">
+                <span v-if="r.status === 'running'" class="spinner-sm"></span>
+                {{ statusLabel(r.status) }}
+              </span>
             </div>
           </div>
           <div class="report-meta">
@@ -161,11 +164,26 @@ watch(
   },
 );
 
+// Also poll when any report in the list is running (even if no report is selected)
+watch(
+  () => reports.value.some((r) => r.status === "running"),
+  (hasRunning) => {
+    if (hasRunning && !pollHandle && !currentReport.value) {
+      pollHandle = setInterval(() => {
+        void loadReports();
+        if (!reports.value.some((r) => r.status === "running")) {
+          stopPolling();
+        }
+      }, 3000);
+    }
+  },
+);
+
 async function loadConversations() {
   try {
     conversations.value = await fetchConversations();
-  } catch (e: any) {
-    error.value = e.message ?? "加载对话失败";
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : "加载对话失败";
   }
 }
 
@@ -173,7 +191,7 @@ async function handleGenerate() {
   if (!selectedConversation.value) return;
   const result = await generate(selectedType.value, selectedConversation.value);
   if (result) {
-    await loadReport(result.report_id);
+    await loadReports();
   }
 }
 
@@ -353,6 +371,21 @@ function stopPolling() {
 .type-annual { background: var(--color-warning-bg); color: var(--color-warning); }
 
 .status-running { background: var(--color-warning-bg); color: var(--color-warning); }
+.status-running .spinner-sm {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 .status-completed { background: var(--color-success-bg); color: var(--color-success); }
 .status-failed { background: var(--color-danger-bg); color: var(--color-danger); }
 

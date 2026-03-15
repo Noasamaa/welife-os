@@ -50,10 +50,12 @@ func (s *Server) routes() http.Handler {
 	router.Post("/api/v1/import", s.handleImportUpload)
 	router.Get("/api/v1/import/jobs", s.handleListImportJobs)
 	router.Get("/api/v1/import/jobs/{id}", s.handleGetImportJob)
+	router.Delete("/api/v1/import/jobs/{id}", s.handleDeleteImportJob)
 
 	// Conversation endpoints
 	router.Get("/api/v1/conversations", s.handleListConversations)
 	router.Get("/api/v1/conversations/{id}", s.handleGetConversation)
+	router.Delete("/api/v1/conversations/{id}", s.handleDeleteConversation)
 	router.Get("/api/v1/conversations/{id}/messages", s.handleGetMessages)
 
 	// Graph endpoints

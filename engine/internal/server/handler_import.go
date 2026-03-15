@@ -84,6 +84,15 @@ func (s *Server) handleGetImportJob(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, job)
 }
 
+func (s *Server) handleDeleteImportJob(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if err := s.store.DeleteImportJob(r.Context(), id); err != nil {
+		writeResourceError(w, "delete-import-job", err, "failed to delete import job")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
 func (s *Server) handleListConversations(w http.ResponseWriter, r *http.Request) {
 	convs, err := s.store.ListConversations(r.Context())
 	if err != nil {
@@ -102,6 +111,15 @@ func (s *Server) handleGetConversation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, conv)
+}
+
+func (s *Server) handleDeleteConversation(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if err := s.store.DeleteConversation(r.Context(), id); err != nil {
+		writeResourceError(w, "delete-conversation", err, "failed to delete conversation")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
 func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request) {

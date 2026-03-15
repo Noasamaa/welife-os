@@ -5,7 +5,11 @@
       <DropZone accept=".csv,.json,.txt,.db,.sqlite,.sqlite3" @file="onFile" />
       <p v-if="importState.uploading" class="status-msg">上传中...</p>
       <p v-if="importState.error" class="status-msg error">{{ importState.error }}</p>
-      <p v-if="graphStatus" class="status-msg">{{ graphStatus }}</p>
+      <div v-if="graphBuilding" class="graph-building-banner">
+        <span class="spinner"></span>
+        <span>{{ graphStatus || '图谱构建中...' }}</span>
+      </div>
+      <p v-else-if="graphStatus" class="status-msg">{{ graphStatus }}</p>
     </section>
 
     <section class="card block">
@@ -19,10 +23,10 @@
         <button
           v-if="conversations.length"
           class="btn"
-          :disabled="graphState.building"
+          :disabled="graphBuilding"
           @click="onBuildGraph"
         >
-          {{ graphState.building ? "构建中..." : "构建图谱" }}
+          {{ graphBuilding ? "构建中..." : "构建图谱" }}
         </button>
       </div>
       <GraphView
@@ -48,6 +52,7 @@ const importState = reactive(useImport());
 const graphState = reactive(useGraph());
 const conversations = ref<Conversation[]>([]);
 const graphStatus = ref("");
+const graphBuilding = ref(false);
 let graphPollHandle: ReturnType<typeof setInterval> | null = null;
 
 async function onFile(file: File) {
@@ -56,10 +61,15 @@ async function onFile(file: File) {
 }
 
 async function onBuildGraph() {
+  if (graphBuilding.value) return;
   if (conversations.value.length === 0) return;
+  graphBuilding.value = true;
   const result = await graphState.buildGraph(conversations.value[0].id);
-  if (!result) return;
-  graphStatus.value = "图谱构建任务已提交，正在后台刷新结果...";
+  if (!result) {
+    graphBuilding.value = false;
+    return;
+  }
+  graphStatus.value = "图谱构建任务已提交，正在后台处理...";
   startGraphPolling();
 }
 
@@ -86,9 +96,21 @@ function startGraphPolling() {
   let attempts = 0;
   graphPollHandle = setInterval(async () => {
     attempts += 1;
+    const prevCount = graphState.overview?.stats?.entity_count ?? 0;
     await graphState.loadOverview();
-    if (attempts >= 10) {
+    const newCount = graphState.overview?.stats?.entity_count ?? 0;
+
+    if (newCount > prevCount) {
+      graphStatus.value = `图谱构建中...已生成 ${newCount} 个实体`;
+    }
+
+    if (attempts >= 30) {
       graphStatus.value = "图谱仍在后台构建中，可稍后手动刷新。";
+      graphBuilding.value = false;
+      stopGraphPolling();
+    } else if (newCount > 0 && newCount === prevCount && attempts >= 3) {
+      graphStatus.value = "图谱构建完成！";
+      graphBuilding.value = false;
       stopGraphPolling();
     }
   }, 2000);
@@ -151,5 +173,34 @@ function stopGraphPolling() {
 
 .status-msg.error {
   color: var(--color-danger);
+}
+
+.graph-building-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: var(--color-info-bg, #e8f4fd);
+  border: 1px solid var(--color-info, #4a90d9);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-info, #2980b9);
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>
