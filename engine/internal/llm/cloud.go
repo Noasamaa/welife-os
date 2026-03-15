@@ -102,7 +102,9 @@ func (c *CloudClient) Generate(ctx context.Context, prompt string) (string, erro
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	// Limit response body to 10 MB to prevent DoS from oversized responses.
+	const maxResponseSize = 10 << 20
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseSize))
 	if err != nil {
 		return "", fmt.Errorf("cloud LLM: read response: %w", err)
 	}
@@ -215,7 +217,9 @@ func (c *CloudClient) Embed(ctx context.Context, text string) ([]float32, error)
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	// Limit response body to 50 MB to prevent DoS from oversized responses.
+	const maxEmbedResponseSize = 50 << 20
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, maxEmbedResponseSize))
 	if err != nil {
 		return nil, fmt.Errorf("cloud embed: read response: %w", err)
 	}

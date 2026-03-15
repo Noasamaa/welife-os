@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -72,6 +73,12 @@ func (s *Server) handleGetLLMConfig(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// isMaskedKey returns true if the value looks like a masked API key
+// (contains consecutive asterisks), meaning the user didn't type a real key.
+func isMaskedKey(s string) bool {
+	return strings.Contains(s, "***")
+}
+
 var validProviders = map[string]struct{}{
 	"ollama":            {},
 	"openai-compatible": {},
@@ -79,6 +86,9 @@ var validProviders = map[string]struct{}{
 
 func (s *Server) handleUpdateLLMConfig(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
+	// Limit request body to 1 MB.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 
 	var req llmConfigPatchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -122,8 +132,8 @@ func (s *Server) handleUpdateLLMConfig(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Handle api_key separately: skip if empty or looks like a mask.
-	if req.APIKey != nil && *req.APIKey != "" && !strings.Contains(*req.APIKey, "****") {
+	// Handle api_key separately: skip if empty or looks like a masked value.
+	if req.APIKey != nil && *req.APIKey != "" && !isMaskedKey(*req.APIKey) {
 		if err := s.store.SaveSetting(ctx, "llm_api_key", *req.APIKey); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save api key"})
 			return
@@ -132,7 +142,8 @@ func (s *Server) handleUpdateLLMConfig(w http.ResponseWriter, r *http.Request) {
 
 	// Hot-swap the LLM client.
 	if err := s.swapLLMClient(ctx); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "config saved but failed to apply: " + err.Error()})
+		log.Printf("llm-config: swap failed: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "config saved but failed to apply"})
 		return
 	}
 

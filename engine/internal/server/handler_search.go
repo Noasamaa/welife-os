@@ -11,6 +11,7 @@ import (
 )
 
 func (s *Server) handleBuildEmbeddings(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req struct {
 		ConversationID string `json:"conversation_id"`
 	}
@@ -81,6 +82,7 @@ func (s *Server) buildEmbeddingsSync(ctx context.Context, conversationID string)
 }
 
 func (s *Server) handleSemanticSearch(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req struct {
 		Query string `json:"query"`
 		Limit int    `json:"limit"`
@@ -104,13 +106,15 @@ func (s *Server) handleSemanticSearch(w http.ResponseWriter, r *http.Request) {
 
 	queryVec, err := s.llmClient.Embed(r.Context(), req.Query)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to embed query: " + err.Error()})
+		log.Printf("semantic-search: embed query: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to embed query"})
 		return
 	}
 
 	results, err := s.vectorStore.Search(queryVec, req.Limit)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "search failed: " + err.Error()})
+		log.Printf("semantic-search: search: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "search failed"})
 		return
 	}
 

@@ -2,10 +2,12 @@ package server
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
 func (s *Server) handleTriggerGraphBuild(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req struct {
 		ConversationID string `json:"conversation_id"`
 	}
@@ -20,7 +22,8 @@ func (s *Server) handleTriggerGraphBuild(w http.ResponseWriter, r *http.Request)
 
 	taskID, err := s.graphEngine.BuildGraph(r.Context(), req.ConversationID)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		log.Printf("graph-build: %v", err)
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "failed to start graph build"})
 		return
 	}
 
@@ -33,7 +36,8 @@ func (s *Server) handleTriggerGraphBuild(w http.ResponseWriter, r *http.Request)
 func (s *Server) handleGraphOverview(w http.ResponseWriter, r *http.Request) {
 	overview, err := s.graphEngine.GetOverview(r.Context())
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		log.Printf("graph-overview: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to load graph overview"})
 		return
 	}
 	writeJSON(w, http.StatusOK, overview)
