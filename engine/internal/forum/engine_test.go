@@ -235,7 +235,7 @@ func TestListSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list sessions: %v", err)
 	}
-	if sessions != nil && len(sessions) != 0 {
+	if len(sessions) != 0 {
 		t.Fatalf("expected empty sessions initially, got %d", len(sessions))
 	}
 

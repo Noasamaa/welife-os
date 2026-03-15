@@ -175,7 +175,7 @@ func TestListAndDeleteReports(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
-	if reports != nil && len(reports) != 0 {
+	if len(reports) != 0 {
 		t.Fatalf("expected empty, got %d", len(reports))
 	}
 
@@ -204,7 +204,7 @@ func TestListAndDeleteReports(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list after delete: %v", err)
 	}
-	if reports != nil && len(reports) != 0 {
+	if len(reports) != 0 {
 		t.Fatalf("expected empty after delete, got %d", len(reports))
 	}
 }
