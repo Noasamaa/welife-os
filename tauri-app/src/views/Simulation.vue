@@ -243,10 +243,6 @@ function statusLabel(s: string): string {
   return m[s] ?? s;
 }
 
-function parseJson(s: string): Record<string, unknown> {
-  try { return JSON.parse(s) as Record<string, unknown>; } catch { return {}; }
-}
-
 const AVATAR_COLORS = [
   "linear-gradient(135deg, #7ee8a8, #4ecca3)",
   "linear-gradient(135deg, #7aadff, #5b8def)",

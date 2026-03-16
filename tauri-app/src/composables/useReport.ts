@@ -24,6 +24,7 @@ export function useReport() {
     try {
       return sanitizeReportContent(JSON.parse(currentReport.value.content));
     } catch {
+      error.value = "报告内容解析失败，数据格式异常";
       return null;
     }
   });

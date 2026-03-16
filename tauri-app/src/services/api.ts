@@ -15,7 +15,7 @@ import type { ReminderRule, Reminder } from "../types/reminder";
 import type { PersonProfile, SimulationSession, SimulationDetail } from "../types/simulation";
 import { getBackendRuntime } from "./tauri";
 
-function assertObject(data: unknown, endpoint: string): asserts data is Record<string, unknown> {
+function assertObject<T = Record<string, unknown>>(data: unknown, endpoint: string): asserts data is T {
   if (typeof data !== "object" || data === null || Array.isArray(data)) {
     throw new Error(`${endpoint}: expected JSON object, got ${typeof data}`);
   }
@@ -56,8 +56,8 @@ export async function fetchSystemStatus(): Promise<SystemStatusResponse> {
   }
 
   const data: unknown = await response.json();
-  assertObject(data, "system/status");
-  return data as unknown as SystemStatusResponse;
+  assertObject<SystemStatusResponse>(data, "system/status");
+  return data;
 }
 
 export async function fetchLLMConfig(): Promise<LLMConfig> {
@@ -404,11 +404,13 @@ export function pollTaskUntilDone(
         if (Date.now() - start > timeoutMs) {
           if (timer) clearInterval(timer);
           resolve(info); // Return last known state on timeout
+          return;
         }
       } catch (err) {
         if (Date.now() - start > timeoutMs) {
           if (timer) clearInterval(timer);
           reject(err);
+          return;
         }
         // Swallow transient errors, keep polling
       }
