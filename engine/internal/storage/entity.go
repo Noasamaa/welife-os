@@ -24,6 +24,30 @@ func (s *Store) ClearGraph(ctx context.Context) error {
 	return tx.Commit()
 }
 
+// ClearGraphForConversation removes only entities and relationships belonging
+// to a specific conversation, leaving other conversations' data intact.
+func (s *Store) ClearGraphForConversation(ctx context.Context, conversationID string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	// Delete relationships where both source and target belong to this conversation
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM relationships WHERE id IN (
+			SELECT r.id FROM relationships r
+			INNER JOIN entities src ON src.id = r.source_entity_id
+			INNER JOIN entities dst ON dst.id = r.target_entity_id
+			WHERE src.source_conversation = ? OR dst.source_conversation = ?
+		)`, conversationID, conversationID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM entities WHERE source_conversation = ?`, conversationID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 // SaveEntity inserts or replaces an entity.
 func (s *Store) SaveEntity(ctx context.Context, e Entity) error {
 	_, err := s.db.ExecContext(ctx, `

@@ -76,13 +76,19 @@ func (e *Engine) RunSimulation(ctx context.Context, config SimulationConfig) (st
 		OriginalGraphSnapshot: string(snapshotBytes),
 	}
 
+	// Create session BEFORE submitting task so the session row exists
+	// even if the task fails immediately.
+	if err := e.store.CreateSimulationSession(ctx, sess); err != nil {
+		return "", "", fmt.Errorf("creating session: %w", err)
+	}
+
 	taskID := e.tasks.Submit("simulation:"+sessionID, func(taskCtx context.Context) error {
 		return e.executeSimulation(taskCtx, sessionID, config)
 	})
 
-	sess.TaskID = taskID
-	if err := e.store.CreateSimulationSession(ctx, sess); err != nil {
-		return "", "", fmt.Errorf("creating session: %w", err)
+	// Update session with task ID
+	if err := e.store.UpdateSimulationSession(ctx, sessionID, "running", "", "", 0); err != nil {
+		log.Printf("simulation: failed to update session %s with task_id: %v", sessionID, err)
 	}
 
 	return sessionID, taskID, nil
@@ -133,6 +139,12 @@ func (e *Engine) executeSimulation(ctx context.Context, sessionID string, config
 	}
 	clonedGraph := buildScopedGraph(entities, rels)
 
+	// Build name→entityID mapping so we can resolve person names to graph node IDs.
+	nameToID := make(map[string]string, len(entities))
+	for _, ent := range entities {
+		nameToID[ent.Name] = ent.ID
+	}
+
 	// 2. Load/build person profiles.
 	profiles, err := e.profiler.BuildAllProfiles(ctx, config.ConversationID)
 	if err != nil {
@@ -141,10 +153,15 @@ func (e *Engine) executeSimulation(ctx context.Context, sessionID string, config
 	}
 
 	// 3. Apply fork point: modify cloned graph edge weights.
-	for _, nodeName := range config.ForkPoint.AffectedNodes {
-		neighbors := clonedGraph.Neighbors(nodeName)
+	// AffectedNodes contains entity IDs (not names).
+	for _, nodeID := range config.ForkPoint.AffectedNodes {
+		neighbors := clonedGraph.Neighbors(nodeID)
+		if len(neighbors) == 0 {
+			log.Printf("simulation: fork affected node %q has no neighbors or not found, skipping", nodeID)
+			continue
+		}
 		for _, neighbor := range neighbors {
-			_ = clonedGraph.AddEdge(nodeName, neighbor, 0.5)
+			_ = clonedGraph.AddEdge(nodeID, neighbor, 0.5)
 		}
 	}
 
@@ -162,10 +179,22 @@ func (e *Engine) executeSimulation(ctx context.Context, sessionID string, config
 			return err
 		}
 
-		// Apply relationship changes to cloned graph.
+		// Apply relationship changes to cloned graph using entity IDs.
 		for _, reaction := range stepResult.reactions {
+			personID, ok := nameToID[reaction.PersonName]
+			if !ok {
+				log.Printf("simulation: person %q not found in entity map, skipping reaction", reaction.PersonName)
+				continue
+			}
 			for _, change := range reaction.RelationshipChanges {
-				_ = clonedGraph.AddEdge(reaction.PersonName, change.Target, change.WeightDelta)
+				targetID, ok := nameToID[change.Target]
+				if !ok {
+					log.Printf("simulation: target %q not found in entity map, skipping edge", change.Target)
+					continue
+				}
+				if err := clonedGraph.AddEdge(personID, targetID, change.WeightDelta); err != nil {
+					log.Printf("simulation: AddEdge %s→%s failed: %v", reaction.PersonName, change.Target, err)
+				}
 			}
 		}
 

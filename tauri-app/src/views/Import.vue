@@ -20,10 +20,23 @@
     <section class="card block">
       <div class="graph-header">
         <h2>知识图谱</h2>
+        <select
+          v-if="conversations.length"
+          v-model="selectedGraphConversation"
+        >
+          <option value="" disabled>选择对话</option>
+          <option
+            v-for="c in conversations"
+            :key="c.id"
+            :value="c.id"
+          >
+            {{ c.title || c.id }}
+          </option>
+        </select>
         <button
           v-if="conversations.length"
           class="btn"
-          :disabled="graphBuilding"
+          :disabled="graphBuilding || !selectedGraphConversation"
           @click="onBuildGraph"
         >
           {{ graphBuilding ? "构建中..." : "构建图谱" }}
@@ -51,6 +64,7 @@ import type { Conversation } from "../types/import";
 const { jobs, uploading, error: importError, upload, refreshJobs } = useImport();
 const { overview, loading: graphLoading, error: graphError, loadOverview, buildGraph } = useGraph();
 const conversations = ref<Conversation[]>([]);
+const selectedGraphConversation = ref("");
 const graphStatus = ref("");
 const graphBuilding = ref(false);
 let cancelPoll: (() => void) | null = null;
@@ -62,9 +76,9 @@ async function onFile(file: File) {
 
 async function onBuildGraph() {
   if (graphBuilding.value) return;
-  if (conversations.value.length === 0) return;
+  if (!selectedGraphConversation.value) return;
   graphBuilding.value = true;
-  const result = await buildGraph(conversations.value[0].id);
+  const result = await buildGraph(selectedGraphConversation.value);
   if (!result) {
     graphBuilding.value = false;
     return;
@@ -100,6 +114,9 @@ async function onBuildGraph() {
 async function loadConversations() {
   try {
     conversations.value = await fetchConversations();
+    if (conversations.value.length > 0 && !selectedGraphConversation.value) {
+      selectedGraphConversation.value = conversations.value[0].id;
+    }
   } catch (e: unknown) {
     importError.value = e instanceof Error ? e.message : "加载对话列表失败";
   }

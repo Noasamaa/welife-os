@@ -185,14 +185,14 @@ curl http://127.0.0.1:18080/api/v1/system/status
 | POST | `/api/v1/simulation/run` | 运行平行人生模拟 |
 | GET | `/api/v1/reminders/pending` | 获取待处理提醒 |
 
-完整 41 个端点请查看 [Chat IR 规范](./docs/chat-ir-spec.md)。
+完整 API 路由定义请查看 [routes.go](./engine/internal/server/routes.go)。
 
 ---
 
 ## 隐私设计
 
 1. **数据不出设备** — 全部处理在本地完成
-2. **零网络依赖** — 离线也能完整运行（使用 Ollama）
+2. **本地优先** — 默认 Ollama 本地推理，支持可选云端 LLM
 3. **加密存储** — SQLCipher AES-256 加密数据库
 4. **无遥测** — 不收集任何使用数据
 5. **密钥自动管理** — 首次启动自动生成，权限 0600

@@ -4,9 +4,11 @@ use std::error::Error;
 use std::fmt::Write as _;
 use std::fs;
 use std::net::TcpListener;
+use std::net::{SocketAddr, TcpStream};
 use std::path::PathBuf;
 use std::process::{Child, Command};
 use std::sync::Mutex;
+use std::time::Duration;
 
 use serde::Serialize;
 use tauri::image::Image;
@@ -161,7 +163,24 @@ fn spawn_go_backend(app_handle: &AppHandle) -> Result<(), Box<dyn Error>> {
         .env("WELIFE_PORT", backend_port.to_string())
         .env("WELIFE_API_TOKEN", backend_runtime.api_token.as_str())
         .env("WELIFE_DB_PATH", backend_data_dir.join("welife.db"));
-    let child = command.spawn()?;
+    let mut child = command.spawn()?;
+
+    // Wait for the backend to accept TCP connections before proceeding
+    let addr: SocketAddr = format!("127.0.0.1:{}", backend_port).parse()?;
+    let timeout = Duration::from_millis(200);
+    let mut ready = false;
+    for _ in 0..30 {
+        if TcpStream::connect_timeout(&addr, timeout).is_ok() {
+            ready = true;
+            break;
+        }
+        std::thread::sleep(timeout);
+    }
+    if !ready {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err("backend did not become ready after 30 attempts".into());
+    }
 
     process.child = Some(child);
     process.runtime = Some(backend_runtime);

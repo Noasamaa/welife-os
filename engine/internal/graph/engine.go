@@ -110,7 +110,7 @@ func (e *Engine) buildGraphSync(ctx context.Context, conversationID string) erro
 
 		result, err := e.extractor.Extract(ctx, snippets)
 		if err != nil {
-			// Log but continue with next batch
+			log.Printf("graph: extraction failed for batch at offset %d: %v", offset, err)
 			offset += batchSize
 			continue
 		}
@@ -121,6 +121,11 @@ func (e *Engine) buildGraphSync(ctx context.Context, conversationID string) erro
 	}
 
 	// Deduplicate entities by name+type
+	// Abort if extraction produced nothing — preserve existing graph data
+	if len(allEntities) == 0 {
+		return fmt.Errorf("all extraction batches failed: no entities produced")
+	}
+
 	entityMap := make(map[string]ExtractedEntity)
 	for _, ent := range allEntities {
 		key := strings.ToLower(string(ent.Type) + ":" + ent.Name)
@@ -172,9 +177,9 @@ func (e *Engine) buildGraphSync(ctx context.Context, conversationID string) erro
 		_ = newGraph.AddEdge(sourceID, targetID, 1.0)
 	}
 
-	// Extraction succeeded — now clear old data and persist new data
-	if err := e.store.ClearGraph(ctx); err != nil {
-		return fmt.Errorf("clearing old graph: %w", err)
+	// Extraction succeeded — now clear old data for THIS conversation and persist new data
+	if err := e.store.ClearGraphForConversation(ctx, conversationID); err != nil {
+		return fmt.Errorf("clearing old graph for conversation: %w", err)
 	}
 
 	if err := e.store.SaveEntities(ctx, storageEntities); err != nil {

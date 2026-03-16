@@ -383,7 +383,7 @@ export function pollTaskUntilDone(
   intervalMs = 1500,
   timeoutMs = 300_000,
 ): { promise: Promise<TaskInfo>; cancel: () => void } {
-  let timer: ReturnType<typeof setInterval> | null = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
   let cancelled = false;
 
   const promise = new Promise<TaskInfo>((resolve, reject) => {
@@ -396,34 +396,34 @@ export function pollTaskUntilDone(
         onProgress?.(info);
 
         if (info.status === "succeeded" || info.status === "failed") {
-          if (timer) clearInterval(timer);
           resolve(info);
           return;
         }
 
         if (Date.now() - start > timeoutMs) {
-          if (timer) clearInterval(timer);
           resolve(info); // Return last known state on timeout
           return;
         }
       } catch (err) {
         if (Date.now() - start > timeoutMs) {
-          if (timer) clearInterval(timer);
           reject(err);
           return;
         }
         // Swallow transient errors, keep polling
       }
+
+      if (!cancelled) {
+        timer = setTimeout(poll, intervalMs);
+      }
     };
 
     // First poll immediately
     poll();
-    timer = setInterval(poll, intervalMs);
   });
 
   const cancel = () => {
     cancelled = true;
-    if (timer) clearInterval(timer);
+    if (timer) clearTimeout(timer);
   };
 
   return { promise, cancel };

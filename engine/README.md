@@ -19,7 +19,7 @@ go run ./cmd/welife
 - `WELIFE_HOST=127.0.0.1`
 - `WELIFE_PORT=18080`
 - `WELIFE_DB_PATH=./.data/welife.db`
-- `WELIFE_DB_KEY=welife-phase0-dev-key`
+- `WELIFE_DB_KEY=(自动生成并存入 welife.key，也可通过环境变量覆盖)`
 - `WELIFE_OLLAMA_BASE_URL=http://127.0.0.1:11434`
 - `WELIFE_OLLAMA_MODEL=qwen3.5:9b`
 

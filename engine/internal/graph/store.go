@@ -44,7 +44,12 @@ func (gs *GraphStore) AddNode(entityID string) int64 {
 }
 
 // AddEdge adds a weighted directed edge between two entities.
+// Self-edges are silently skipped (gonum panics on self-loops).
 func (gs *GraphStore) AddEdge(fromEntityID, toEntityID string, weight float64) error {
+	if fromEntityID == toEntityID {
+		return nil // skip self-edges
+	}
+
 	gs.mu.Lock()
 	defer gs.mu.Unlock()
 
