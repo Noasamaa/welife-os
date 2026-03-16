@@ -278,6 +278,26 @@ export function usePixiGraph(
     updateHighlight();
   }
 
+  // Wait for browser to complete layout (nextTick only waits for Vue update, not reflow)
+  function waitForLayout(): Promise<void> {
+    return new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  }
+
+  // Fallback circular layout when Web Worker fails
+  function applyCircularLayout(): void {
+    const nodes = Array.from(nodeGfxMap.values());
+    const count = nodes.length;
+    if (count === 0) return;
+    const radius = Math.min(400, count * 3);
+    for (let i = 0; i < count; i++) {
+      const angle = (2 * Math.PI * i) / count;
+      nodes[i].container.x = Math.cos(angle) * radius;
+      nodes[i].container.y = Math.sin(angle) * radius;
+    }
+    drawEdges();
+    fitToView();
+  }
+
   // --- Initialize pixi.js Application + Web Worker ---
   async function init(): Promise<void> {
     destroy();
@@ -287,6 +307,17 @@ export function usePixiGraph(
     const container = containerRef.value;
     const data = overview.value;
     if (!container || !data || data.nodes.length === 0) return;
+
+    // Wait for browser reflow so container has real dimensions
+    await waitForLayout();
+    if (destroyed || generation !== initGeneration) return;
+
+    // Verify container has real dimensions
+    if (container.clientWidth === 0 || container.clientHeight === 0) {
+      console.warn("[usePixiGraph] container has 0 dimensions, retrying...");
+      await waitForLayout();
+      if (destroyed || generation !== initGeneration) return;
+    }
 
     // 1. Create pixi Application (WebGL with Canvas 2D fallback)
     app = new Application();
@@ -427,12 +458,35 @@ export function usePixiGraph(
     currentCanvas.style.cursor = "grab";
 
     // 8. Start Web Worker for d3-force simulation
-    worker = new Worker(
-      new URL("../workers/forceWorker.ts", import.meta.url),
-      { type: "module" },
-    );
+    let workerFailed = false;
+    let workerFallbackTimer: ReturnType<typeof setTimeout> | null = null;
+
+    try {
+      worker = new Worker(
+        new URL("../workers/forceWorker.ts", import.meta.url),
+        { type: "module" },
+      );
+    } catch (err) {
+      console.warn("[usePixiGraph] Worker creation failed, using circular layout:", err);
+      workerFailed = true;
+    }
+
+    if (workerFailed || !worker) {
+      applyCircularLayout();
+      return;
+    }
+
+    worker.onerror = (err) => {
+      console.warn("[usePixiGraph] Worker error, falling back to circular layout:", err);
+      if (workerFallbackTimer !== null) clearTimeout(workerFallbackTimer);
+      applyCircularLayout();
+    };
 
     worker.onmessage = (e) => {
+      if (workerFallbackTimer !== null) {
+        clearTimeout(workerFallbackTimer);
+        workerFallbackTimer = null;
+      }
       if (e.data.type === "tick") {
         for (const pos of e.data.positions as Array<{ id: string; x: number; y: number }>) {
           const node = nodeGfxMap.get(pos.id);
@@ -450,9 +504,11 @@ export function usePixiGraph(
       }
     };
 
-    // Send initial data to worker
+    // Send initial data to worker (use real canvas dimensions with safe minimum)
     stabilized = false;
     tickCount = 0;
+    const canvasW = Math.max(app.screen.width, 800);
+    const canvasH = Math.max(app.screen.height, 500);
     worker.postMessage({
       type: "init",
       nodes: data.nodes.map((n) => ({
@@ -460,9 +516,18 @@ export function usePixiGraph(
         radius: Math.max(4, Math.sqrt(degreeMap.get(n.id) ?? 0) * 3),
       })),
       links: edgeList.map((e) => ({ source: e.source, target: e.target })),
-      width: app.screen.width,
-      height: app.screen.height,
+      width: canvasW,
+      height: canvasH,
     });
+
+    // Safety net: if no tick arrives within 3 seconds, fall back to circular layout
+    workerFallbackTimer = setTimeout(() => {
+      workerFallbackTimer = null;
+      if (tickCount === 0 && !destroyed) {
+        console.warn("[usePixiGraph] No worker ticks received after 3s, using circular layout");
+        applyCircularLayout();
+      }
+    }, 3000);
   }
 
   // --- Cleanup ---

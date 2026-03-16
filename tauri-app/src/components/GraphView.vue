@@ -73,7 +73,7 @@ const selectedNodeName = computed(() => {
 watch(
   () => props.overview,
   async (newOverview) => {
-    if (newOverview && newOverview.nodes.length > 0) {
+    if (newOverview && newOverview.nodes.length > 0 && containerRef.value) {
       await nextTick();
       controls.reinit();
     }
