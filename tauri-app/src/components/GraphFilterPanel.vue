@@ -21,7 +21,7 @@
           :style="chipStyle(t)"
           @click="toggleType(t)"
         >
-          {{ t }}
+          {{ TYPE_LABELS[t] ?? t }}
         </button>
       </div>
     </div>
@@ -45,6 +45,14 @@ const TYPE_COLORS: Record<string, string> = {
   topic: "#3498db",
   promise: "#9b59b6",
   place: "#e74c3c",
+};
+
+const TYPE_LABELS: Record<string, string> = {
+  person: "人物",
+  event: "事件",
+  topic: "话题",
+  promise: "承诺",
+  place: "地点",
 };
 
 const props = defineProps<{

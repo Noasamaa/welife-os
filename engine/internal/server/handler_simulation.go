@@ -152,6 +152,9 @@ func (s *Server) handleGetSimulation(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to get simulation steps"})
 		return
 	}
+	if steps == nil {
+		steps = []storage.SimulationStep{}
+	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"session": session,

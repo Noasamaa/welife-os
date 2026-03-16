@@ -3,8 +3,8 @@
     <section class="card block">
       <h2>导入聊天记录</h2>
       <DropZone accept=".csv,.json,.txt,.db,.sqlite,.sqlite3" @file="onFile" />
-      <p v-if="importState.uploading" class="status-msg">上传中...</p>
-      <p v-if="importState.error" class="status-msg error">{{ importState.error }}</p>
+      <p v-if="uploading" class="status-msg">上传中...</p>
+      <p v-if="importError" class="status-msg error">{{ importError }}</p>
       <div v-if="graphBuilding" class="graph-building-banner">
         <span class="spinner"></span>
         <span>{{ graphStatus || '图谱构建中...' }}</span>
@@ -14,7 +14,7 @@
 
     <section class="card block">
       <h2>导入记录</h2>
-      <ImportJobList :jobs="importState.jobs" />
+      <ImportJobList :jobs="jobs" />
     </section>
 
     <section class="card block">
@@ -30,16 +30,16 @@
         </button>
       </div>
       <GraphView
-        :overview="graphState.overview"
-        :loading="graphState.loading"
-        :error="graphState.error"
+        :overview="overview"
+        :loading="graphLoading"
+        :error="graphError"
       />
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, reactive } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import DropZone from "../components/DropZone.vue";
 import ImportJobList from "../components/ImportJobList.vue";
 import GraphView from "../components/GraphView.vue";
@@ -48,15 +48,15 @@ import { useGraph } from "../composables/useGraph";
 import { fetchConversations } from "../services/api";
 import type { Conversation } from "../types/import";
 
-const importState = reactive(useImport());
-const graphState = reactive(useGraph());
+const { jobs, uploading, error: importError, upload, refreshJobs } = useImport();
+const { overview, loading: graphLoading, error: graphError, loadOverview, buildGraph } = useGraph();
 const conversations = ref<Conversation[]>([]);
 const graphStatus = ref("");
 const graphBuilding = ref(false);
 let graphPollHandle: ReturnType<typeof setInterval> | null = null;
 
 async function onFile(file: File) {
-  await importState.upload(file);
+  await upload(file);
   await loadConversations();
 }
 
@@ -64,7 +64,7 @@ async function onBuildGraph() {
   if (graphBuilding.value) return;
   if (conversations.value.length === 0) return;
   graphBuilding.value = true;
-  const result = await graphState.buildGraph(conversations.value[0].id);
+  const result = await buildGraph(conversations.value[0].id);
   if (!result) {
     graphBuilding.value = false;
     return;
@@ -82,9 +82,9 @@ async function loadConversations() {
 }
 
 onMounted(async () => {
-  await importState.refreshJobs();
+  await refreshJobs();
   await loadConversations();
-  await graphState.loadOverview();
+  await loadOverview();
 });
 
 onUnmounted(() => {
@@ -96,9 +96,9 @@ function startGraphPolling() {
   let attempts = 0;
   graphPollHandle = setInterval(async () => {
     attempts += 1;
-    const prevCount = graphState.overview?.stats?.entity_count ?? 0;
-    await graphState.loadOverview();
-    const newCount = graphState.overview?.stats?.entity_count ?? 0;
+    const prevCount = overview.value?.stats?.entity_count ?? 0;
+    await loadOverview();
+    const newCount = overview.value?.stats?.entity_count ?? 0;
 
     if (newCount > prevCount) {
       graphStatus.value = `图谱构建中...已生成 ${newCount} 个实体`;
