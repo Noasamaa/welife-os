@@ -27,7 +27,7 @@
     </div>
 
     <!-- Profiles -->
-    <div class="card">
+    <div class="card" v-if="selectedConversation">
       <div class="panel-header">
         <h3>人物画像</h3>
         <button class="btn-secondary" :disabled="building || !selectedConversation" @click="handleBuildProfiles">
@@ -35,11 +35,38 @@
         </button>
       </div>
       <div v-if="profileStatus" class="status-note">{{ profileStatus }}</div>
-      <div v-if="profiles.length === 0" class="empty">暂无画像，点击「构建画像」从知识图谱生成。</div>
-      <div class="profile-grid">
-        <div v-for="p in profiles" :key="p.id" class="profile-card">
-          <div class="profile-name">{{ p.name }}</div>
-          <div class="profile-detail">{{ parseJson(p.personality).traits || p.personality }}</div>
+      <div v-if="profiles.length === 0 && !building" class="empty">暂无画像，点击「构建画像」从知识图谱生成。</div>
+      <div class="profile-gallery">
+        <div
+          v-for="p in profiles"
+          :key="p.id"
+          class="persona-card"
+          :class="{ expanded: expandedProfile === p.id }"
+          @click="expandedProfile = expandedProfile === p.id ? null : p.id"
+        >
+          <!-- Avatar -->
+          <div class="persona-avatar" :style="{ background: avatarColor(p.name) }">
+            {{ p.name.slice(0, 1) }}
+          </div>
+          <div class="persona-info">
+            <div class="persona-name">{{ p.name }}</div>
+            <div class="persona-relation">{{ p.relationship_to_self?.slice(0, 50) || '未知关系' }}{{ p.relationship_to_self && p.relationship_to_self.length > 50 ? '...' : '' }}</div>
+          </div>
+          <!-- Expanded detail -->
+          <div v-if="expandedProfile === p.id" class="persona-detail" @click.stop>
+            <div class="detail-section">
+              <div class="detail-label">性格特质</div>
+              <p class="detail-text">{{ p.personality }}</p>
+            </div>
+            <div class="detail-section" v-if="p.relationship_to_self">
+              <div class="detail-label">与你的关系</div>
+              <p class="detail-text">{{ p.relationship_to_self }}</p>
+            </div>
+            <div class="detail-section" v-if="p.behavioral_patterns">
+              <div class="detail-label">行为模式</div>
+              <p class="detail-text">{{ p.behavioral_patterns }}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -129,6 +156,7 @@ const conversations = ref<Conversation[]>([]);
 const selectedConversation = ref("");
 const forkDescription = ref("");
 const profileStatus = ref("");
+const expandedProfile = ref<string | null>(null);
 let cancelProfilePoll: (() => void) | null = null;
 let cancelSessionPoll: (() => void) | null = null;
 
@@ -217,6 +245,22 @@ function statusLabel(s: string): string {
 
 function parseJson(s: string): Record<string, unknown> {
   try { return JSON.parse(s) as Record<string, unknown>; } catch { return {}; }
+}
+
+const AVATAR_COLORS = [
+  "linear-gradient(135deg, #7ee8a8, #4ecca3)",
+  "linear-gradient(135deg, #7aadff, #5b8def)",
+  "linear-gradient(135deg, #f0b866, #e8963a)",
+  "linear-gradient(135deg, #c4a0f5, #a67de8)",
+  "linear-gradient(135deg, #f5827a, #e85d5d)",
+  "linear-gradient(135deg, #6ecfcf, #4db8b8)",
+  "linear-gradient(135deg, #f5a0c0, #e87da0)",
+];
+
+function avatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
 async function loadConversationOptions() {
@@ -373,34 +417,96 @@ async function handleSelectSession(id: string) {
   border-color: var(--color-primary);
 }
 
-.profile-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
+.profile-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.profile-card {
+.persona-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 12px;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
   transition: all var(--transition-fast);
 }
 
-.profile-card:hover {
-  background: var(--color-bg-hover);
+.persona-card:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-sm);
 }
 
-.profile-name {
+.persona-card.expanded {
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
+}
+
+.persona-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.persona-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.persona-name {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--color-text);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
-.profile-detail {
-  font-size: 12px;
-  color: var(--color-text-muted);
+.persona-relation {
+  font-size: 13px;
+  color: var(--color-text-secondary);
   line-height: 1.4;
+}
+
+.persona-detail {
+  width: 100%;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  cursor: default;
+}
+
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.3px;
+}
+
+.detail-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
 }
 
 .fork-form {

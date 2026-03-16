@@ -1,8 +1,8 @@
 <template>
   <div class="action-card" :class="`priority-${item.priority}`">
     <div class="card-header">
-      <span class="category-tag">{{ item.category }}</span>
-      <span class="priority-tag" :class="`p-${item.priority}`">{{ item.priority }}</span>
+      <span class="category-tag">{{ categoryLabel(item.category) }}</span>
+      <span class="priority-tag" :class="`p-${item.priority}`">{{ priorityLabel(item.priority) }}</span>
     </div>
     <h4 class="card-title">{{ item.title }}</h4>
     <p class="card-desc">{{ item.description }}</p>
@@ -32,6 +32,28 @@ defineEmits<{
   complete: [id: string];
   dismiss: [id: string];
 }>();
+
+const CATEGORY_LABELS: Record<string, string> = {
+  project: "项目",
+  contact: "联系人",
+  decision: "决策",
+  followup: "跟进",
+  general: "通用",
+};
+
+const PRIORITY_LABELS: Record<string, string> = {
+  high: "高",
+  medium: "中",
+  low: "低",
+};
+
+function categoryLabel(category: string): string {
+  return CATEGORY_LABELS[category] ?? category;
+}
+
+function priorityLabel(priority: string): string {
+  return PRIORITY_LABELS[priority] ?? priority;
+}
 </script>
 
 <style scoped>
