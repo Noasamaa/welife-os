@@ -4,6 +4,7 @@
       <h2>导入聊天记录</h2>
       <DropZone accept=".csv,.json,.txt,.db,.sqlite,.sqlite3" @file="onFile" />
       <p v-if="uploading" class="status-msg">上传中...</p>
+      <p v-if="importStatus" class="status-msg">{{ importStatus }}</p>
       <p v-if="importError" class="status-msg error">{{ importError }}</p>
       <div v-if="graphBuilding" class="graph-building-banner">
         <span class="spinner"></span>
@@ -53,11 +54,44 @@ const { overview, loading: graphLoading, error: graphError, loadOverview, buildG
 const conversations = ref<Conversation[]>([]);
 const graphStatus = ref("");
 const graphBuilding = ref(false);
+const importStatus = ref("");
 let graphPollHandle: ReturnType<typeof setInterval> | null = null;
+let importPollHandle: ReturnType<typeof setInterval> | null = null;
 
 async function onFile(file: File) {
-  await upload(file);
-  await loadConversations();
+  importStatus.value = "";
+  const result = await upload(file);
+  if (!result) return;
+  importStatus.value = "导入任务已提交，正在后台处理...";
+  startImportPolling(result.job_id);
+}
+
+function startImportPolling(jobId: string) {
+  stopImportPolling();
+  let attempts = 0;
+  importPollHandle = setInterval(async () => {
+    attempts += 1;
+    await refreshJobs();
+    const job = jobs.value.find((j) => j.id === jobId);
+    if (job && job.status === "succeeded") {
+      importStatus.value = `导入完成！共 ${job.message_count ?? 0} 条消息。`;
+      stopImportPolling();
+      await loadConversations();
+    } else if (job && job.status === "failed") {
+      importStatus.value = `导入失败：${job.error_message || "未知错误"}`;
+      stopImportPolling();
+    } else if (attempts >= 60) {
+      importStatus.value = "导入仍在后台处理中，可稍后手动刷新。";
+      stopImportPolling();
+    }
+  }, 2000);
+}
+
+function stopImportPolling() {
+  if (importPollHandle !== null) {
+    clearInterval(importPollHandle);
+    importPollHandle = null;
+  }
 }
 
 async function onBuildGraph() {
@@ -89,11 +123,13 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopGraphPolling();
+  stopImportPolling();
 });
 
 function startGraphPolling() {
   stopGraphPolling();
   let attempts = 0;
+  let stableCount = 0;
   graphPollHandle = setInterval(async () => {
     attempts += 1;
     const prevCount = overview.value?.stats?.entity_count ?? 0;
@@ -102,18 +138,21 @@ function startGraphPolling() {
 
     if (newCount > prevCount) {
       graphStatus.value = `图谱构建中...已生成 ${newCount} 个实体`;
+      stableCount = 0;
+    } else if (newCount > 0) {
+      stableCount += 1;
     }
 
-    if (attempts >= 30) {
+    if (attempts >= 60) {
       graphStatus.value = "图谱仍在后台构建中，可稍后手动刷新。";
       graphBuilding.value = false;
       stopGraphPolling();
-    } else if (newCount > 0 && newCount === prevCount && attempts >= 3) {
-      graphStatus.value = "图谱构建完成！";
+    } else if (newCount > 0 && stableCount >= 3) {
+      graphStatus.value = `图谱构建完成！共 ${newCount} 个实体。`;
       graphBuilding.value = false;
       stopGraphPolling();
     }
-  }, 2000);
+  }, 3000);
 }
 
 function stopGraphPolling() {

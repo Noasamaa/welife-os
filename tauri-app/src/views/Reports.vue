@@ -148,31 +148,39 @@ onUnmounted(() => {
 });
 
 watch(
-  () => ({
-    currentStatus: currentReport.value?.status,
-    hasRunning: reports.value.some((r) => r.status === "running"),
-  }),
-  ({ currentStatus, hasRunning }) => {
-    stopPolling();
-    const needsPolling = currentStatus === "running" || hasRunning;
-    if (!needsPolling) return;
-
-    pollHandle = setInterval(() => {
-      void loadReports();
-      if (currentReport.value) {
-        void loadReport(currentReport.value.id);
-      }
-      // Stop if nothing is running anymore
-      if (
-        currentReport.value?.status !== "running" &&
-        !reports.value.some((r) => r.status === "running")
-      ) {
-        stopPolling();
-      }
-    }, 2000);
+  () => currentReport.value?.status,
+  (status) => {
+    if (status === "running") {
+      startPolling();
+    }
   },
-  { deep: true },
 );
+
+watch(
+  () => reports.value.some((r) => r.status === "running"),
+  (hasRunning) => {
+    if (hasRunning) {
+      startPolling();
+    }
+  },
+);
+
+function startPolling() {
+  if (pollHandle !== null) return; // already polling
+  pollHandle = setInterval(() => {
+    void loadReports();
+    if (currentReport.value) {
+      void loadReport(currentReport.value.id);
+    }
+    // Stop when nothing is running
+    if (
+      currentReport.value?.status !== "running" &&
+      !reports.value.some((r) => r.status === "running")
+    ) {
+      stopPolling();
+    }
+  }, 3000);
+}
 
 async function loadConversations() {
   try {
