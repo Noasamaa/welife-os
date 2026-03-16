@@ -69,7 +69,7 @@ func (s *Store) GetActionItem(ctx context.Context, id string) (ActionItem, error
 			&item.Category, &item.RelatedEntityID, &item.DueDate,
 			&item.CompletedAt, &item.CreatedAt)
 	if err == sql.ErrNoRows {
-		return item, fmt.Errorf("action item %q not found", id)
+		return item, fmt.Errorf("action item %q: %w", id, ErrNotFound)
 	}
 	return item, err
 }
@@ -98,7 +98,7 @@ func (s *Store) UpdateActionItemStatus(ctx context.Context, id, status string) e
 		return err
 	}
 	if rows == 0 {
-		return fmt.Errorf("action item %q not found", id)
+		return fmt.Errorf("action item %q: %w", id, ErrNotFound)
 	}
 	return nil
 }
@@ -114,7 +114,7 @@ func (s *Store) DeleteActionItem(ctx context.Context, id string) error {
 		return err
 	}
 	if rows == 0 {
-		return fmt.Errorf("action item %q not found", id)
+		return fmt.Errorf("action item %q: %w", id, ErrNotFound)
 	}
 	return nil
 }

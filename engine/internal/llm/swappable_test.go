@@ -35,7 +35,7 @@ func TestSwappableClient_DelegatesToInner(t *testing.T) {
 		reachable:      true,
 		status:         StatusInfo{Provider: "ollama", Reachable: true},
 	}
-	sc := NewSwappable(inner)
+	sc := NewSwappable(inner, 0)
 	ctx := context.Background()
 
 	got, err := sc.Generate(ctx, "prompt")
@@ -72,7 +72,7 @@ func TestSwappableClient_SwapChangesInner(t *testing.T) {
 	first := &stubClient{generateResult: "first"}
 	second := &stubClient{generateResult: "second"}
 
-	sc := NewSwappable(first)
+	sc := NewSwappable(first, 0)
 	ctx := context.Background()
 
 	got, _ := sc.Generate(ctx, "")
@@ -90,7 +90,7 @@ func TestSwappableClient_SwapChangesInner(t *testing.T) {
 
 func TestSwappableClient_ImplementsLLMClient(t *testing.T) {
 	inner := &stubClient{}
-	sc := NewSwappable(inner)
+	sc := NewSwappable(inner, 0)
 
 	// Compile-time check: *SwappableClient satisfies LLMClient.
 	var _ LLMClient = sc

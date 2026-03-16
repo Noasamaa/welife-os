@@ -43,6 +43,7 @@ func (s *Server) buildEmbeddingsSync(ctx context.Context, conversationID string)
 	const batchSize = 50
 	offset := 0
 	embedded := 0
+	skipped := 0
 
 	for {
 		if ctx.Err() != nil {
@@ -65,11 +66,13 @@ func (s *Server) buildEmbeddingsSync(ctx context.Context, conversationID string)
 			vec, err := s.llmClient.Embed(ctx, m.Content)
 			if err != nil {
 				log.Printf("embed: skip message %s: %v", m.ID, err)
+				skipped++
 				continue
 			}
 
 			if err := s.vectorStore.StoreEmbedding(m.ID, vec, nil); err != nil {
 				log.Printf("embed: store failed for %s: %v", m.ID, err)
+				skipped++
 				continue
 			}
 			embedded++
@@ -77,7 +80,10 @@ func (s *Server) buildEmbeddingsSync(ctx context.Context, conversationID string)
 		offset += batchSize
 	}
 
-	log.Printf("embed: built %d embeddings for conversation %s", embedded, conversationID)
+	log.Printf("embed: built %d embeddings, skipped %d for conversation %s", embedded, skipped, conversationID)
+	if embedded == 0 && skipped > 0 {
+		return fmt.Errorf("all %d messages failed to embed for conversation %s", skipped, conversationID)
+	}
 	return nil
 }
 

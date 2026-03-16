@@ -43,7 +43,7 @@ func (s *Store) GetSession(ctx context.Context, id string) (ForumSession, error)
 		Scan(&sess.ID, &sess.ConversationID, &sess.TaskID, &sess.Status,
 			&sess.Summary, &sess.CreatedAt, &sess.CompletedAt)
 	if err == sql.ErrNoRows {
-		return sess, fmt.Errorf("session %q not found", id)
+		return sess, fmt.Errorf("session %q: %w", id, ErrNotFound)
 	}
 	return sess, err
 }

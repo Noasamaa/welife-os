@@ -49,7 +49,7 @@ func (s *Store) GetReport(ctx context.Context, id string) (Report, error) {
 			&r.Title, &r.Content, &r.PeriodStart, &r.PeriodEnd,
 			&r.CreatedAt, &r.CompletedAt)
 	if err == sql.ErrNoRows {
-		return r, fmt.Errorf("report %q not found", id)
+		return r, fmt.Errorf("report %q: %w", id, ErrNotFound)
 	}
 	return r, err
 }
@@ -88,7 +88,7 @@ func (s *Store) DeleteReport(ctx context.Context, id string) error {
 		return err
 	}
 	if rows == 0 {
-		return fmt.Errorf("report %q not found", id)
+		return fmt.Errorf("report %q: %w", id, ErrNotFound)
 	}
 	return nil
 }

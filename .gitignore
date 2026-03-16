@@ -16,3 +16,4 @@ tauri-app/src-tauri/target/
 tauri-app/src-tauri/bin/
 
 tauri-app/coverage/
+testdata/

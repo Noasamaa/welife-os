@@ -20,18 +20,44 @@ import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { GraphChart } from "echarts/charts";
 import { TitleComponent, TooltipComponent } from "echarts/components";
+import type { ComposeOption } from "echarts/core";
+import type { GraphSeriesOption } from "echarts/charts";
+import type { TitleComponentOption, TooltipComponentOption } from "echarts/components";
 
 use([CanvasRenderer, GraphChart, TitleComponent, TooltipComponent]);
+
+type GraphOption = ComposeOption<GraphSeriesOption | TitleComponentOption | TooltipComponentOption>;
+
+interface SnapshotNode {
+  name?: string;
+  Name?: string;
+  type?: string;
+  Type?: string;
+}
+
+interface SnapshotEdge {
+  source?: string;
+  Source?: string;
+  target?: string;
+  Target?: string;
+  weight?: number;
+  Weight?: number;
+}
+
+interface SnapshotData {
+  nodes?: SnapshotNode[];
+  edges?: SnapshotEdge[];
+}
 
 const props = defineProps<{
   originalSnapshot?: string;
   finalSnapshot?: string;
 }>();
 
-function parseSnapshot(snapshot?: string): any {
+function parseSnapshot(snapshot?: string): GraphOption | null {
   if (!snapshot) return null;
   try {
-    const data = JSON.parse(snapshot);
+    const data: SnapshotData = JSON.parse(snapshot);
     if (!data.nodes) return null;
     return {
       series: [{
@@ -40,14 +66,14 @@ function parseSnapshot(snapshot?: string): any {
         force: { repulsion: 120, edgeLength: 80 },
         roam: true,
         label: { show: true, fontSize: 11 },
-        data: (data.nodes || []).map((n: any) => ({
-          name: n.name || n.Name,
+        data: (data.nodes || []).map((n) => ({
+          name: n.name || n.Name || "",
           symbolSize: 30,
           category: n.type || n.Type,
         })),
-        links: (data.edges || []).map((e: any) => ({
-          source: e.source || e.Source,
-          target: e.target || e.Target,
+        links: (data.edges || []).map((e) => ({
+          source: e.source || e.Source || "",
+          target: e.target || e.Target || "",
           value: e.weight || e.Weight || 1,
         })),
       }],

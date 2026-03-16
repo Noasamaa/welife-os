@@ -15,6 +15,12 @@ import type { ReminderRule, Reminder } from "../types/reminder";
 import type { PersonProfile, SimulationSession, SimulationDetail } from "../types/simulation";
 import { getBackendRuntime } from "./tauri";
 
+function assertObject(data: unknown, endpoint: string): asserts data is Record<string, unknown> {
+  if (typeof data !== "object" || data === null || Array.isArray(data)) {
+    throw new Error(`${endpoint}: expected JSON object, got ${typeof data}`);
+  }
+}
+
 export async function getAPIBaseURL(): Promise<string> {
   const runtime = await getBackendRuntime();
   return runtime.baseUrl || "/api";
@@ -49,7 +55,9 @@ export async function fetchSystemStatus(): Promise<SystemStatusResponse> {
     throw new Error(`failed to fetch system status: ${response.status}`);
   }
 
-  return (await response.json()) as SystemStatusResponse;
+  const data: unknown = await response.json();
+  assertObject(data, "system/status");
+  return data as unknown as SystemStatusResponse;
 }
 
 export async function fetchLLMConfig(): Promise<LLMConfig> {

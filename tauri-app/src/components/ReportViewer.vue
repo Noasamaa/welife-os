@@ -22,9 +22,9 @@
           <li v-for="(item, i) in section.items" :key="i" class="list-item">
             <template v-if="typeof item === 'string'">{{ item }}</template>
             <template v-else-if="typeof item === 'object' && item !== null">
-              <strong v-if="(item as any).title">{{ (item as any).title }}</strong>
-              <span v-if="(item as any).description"> — {{ (item as any).description }}</span>
-              <span v-if="(item as any).content"> — {{ (item as any).content }}</span>
+              <strong v-if="(item as Record<string, unknown>).title">{{ (item as Record<string, unknown>).title }}</strong>
+              <span v-if="(item as Record<string, unknown>).description"> — {{ (item as Record<string, unknown>).description }}</span>
+              <span v-if="(item as Record<string, unknown>).content"> — {{ (item as Record<string, unknown>).content }}</span>
             </template>
           </li>
         </ul>

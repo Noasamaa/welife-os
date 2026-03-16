@@ -9,7 +9,7 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
     coverage: {
       provider: "v8",
-      include: ["src/composables/**", "src/components/**"],
+      include: ["src/composables/**", "src/components/**", "src/views/**", "src/services/**"],
       reporter: ["text", "lcov"],
     },
   },

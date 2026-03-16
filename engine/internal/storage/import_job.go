@@ -51,7 +51,7 @@ func (s *Store) GetImportJob(ctx context.Context, id string) (ImportJob, error) 
 		Scan(&j.ID, &j.TaskID, &j.FileName, &j.Format, &j.Status,
 			&j.ConversationID, &j.MessageCount, &j.ErrorMessage, &j.StartedAt, &j.CompletedAt)
 	if err == sql.ErrNoRows {
-		return j, fmt.Errorf("import job %q not found", id)
+		return j, fmt.Errorf("import job %q: %w", id, ErrNotFound)
 	}
 	return j, err
 }

@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted, ref } from "vue";
+import { ref } from "vue";
 
 import { fetchSystemStatus, getAPIBaseURL } from "../services/api";
 import type { SystemStatusResponse } from "../types/api";
@@ -9,45 +9,30 @@ const apiBaseUrl = ref("/api");
 const status = ref<BackendStatus>("checking");
 const systemStatus = ref<SystemStatusResponse | null>(null);
 const errorMessage = ref<string | null>(null);
-let initialized = false;
 let pollHandle: number | null = null;
-let mountCount = 0;
+
+async function checkHealth(): Promise<void> {
+  status.value = "checking";
+  try {
+    apiBaseUrl.value = await getAPIBaseURL();
+    systemStatus.value = await fetchSystemStatus();
+    status.value = systemStatus.value.backend.status === "ok" ? "healthy" : "unreachable";
+    errorMessage.value = null;
+  } catch (error) {
+    status.value = "unreachable";
+    errorMessage.value = error instanceof Error ? error.message : "unknown error";
+  }
+}
+
+// Start polling once on first import — never stops during app lifetime.
+if (pollHandle === null) {
+  void checkHealth();
+  pollHandle = window.setInterval(() => {
+    void checkHealth();
+  }, 5000);
+}
 
 export function useBackendHealth() {
-  async function checkHealth(): Promise<void> {
-    status.value = "checking";
-    try {
-      apiBaseUrl.value = await getAPIBaseURL();
-      systemStatus.value = await fetchSystemStatus();
-      status.value = systemStatus.value.backend.status === "ok" ? "healthy" : "unreachable";
-      errorMessage.value = null;
-    } catch (error) {
-      status.value = "unreachable";
-      errorMessage.value = error instanceof Error ? error.message : "unknown error";
-    }
-  }
-
-  onMounted(() => {
-    mountCount++;
-    if (!initialized) {
-      initialized = true;
-      void checkHealth();
-      pollHandle = window.setInterval(() => {
-        void checkHealth();
-      }, 5000);
-    }
-  });
-
-  onUnmounted(() => {
-    mountCount--;
-    if (mountCount <= 0 && pollHandle !== null) {
-      window.clearInterval(pollHandle);
-      pollHandle = null;
-      initialized = false;
-      mountCount = 0;
-    }
-  });
-
   return {
     apiBaseUrl,
     checkHealth,

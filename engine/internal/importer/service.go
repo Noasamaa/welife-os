@@ -102,9 +102,9 @@ func (s *Service) Import(ctx context.Context, req ImportRequest) (ImportResult, 
 		return s.runImport(taskCtx, jobID, raw, p, detectedFormat, opts)
 	})
 
-	// Update job with task ID
+	// Update job with task ID (non-critical: both job and task are already created)
 	if err := s.store.BindImportJobTask(ctx, jobID, taskID); err != nil {
-		log.Printf("importer: binding task to job %s: %v", jobID, err)
+		log.Printf("[WARN] importer: binding task to job %s: %v", jobID, err)
 	}
 
 	return ImportResult{
@@ -119,7 +119,7 @@ func (s *Service) runImport(ctx context.Context, jobID string, data []byte, p pa
 	ir, err := p.Parse(ctx, bytesReader(data), opts)
 	if err != nil {
 		if dbErr := s.store.UpdateImportJob(ctx, jobID, "failed", "", 0, err.Error()); dbErr != nil {
-			log.Printf("importer: updating job %s status: %v", jobID, dbErr)
+			log.Printf("[WARN] importer: updating job %s status: %v", jobID, dbErr)
 		}
 		return fmt.Errorf("parsing: %w", err)
 	}
@@ -138,14 +138,14 @@ func (s *Service) runImport(ctx context.Context, jobID string, data []byte, p pa
 	parts := chatIRToStoredParticipants(ir)
 	if err := s.store.SaveConversationBundle(ctx, conv, msgs, parts); err != nil {
 		if dbErr := s.store.UpdateImportJob(ctx, jobID, "failed", ir.ConversationID, len(msgs), err.Error()); dbErr != nil {
-			log.Printf("importer: updating job %s status: %v", jobID, dbErr)
+			log.Printf("[WARN] importer: updating job %s status: %v", jobID, dbErr)
 		}
 		return fmt.Errorf("saving import bundle: %w", err)
 	}
 
 	// Mark success
 	if err := s.store.UpdateImportJob(ctx, jobID, "succeeded", ir.ConversationID, len(msgs), ""); err != nil {
-		log.Printf("importer: marking job %s succeeded: %v", jobID, err)
+		log.Printf("[WARN] importer: marking job %s succeeded: %v", jobID, err)
 	}
 	return nil
 }

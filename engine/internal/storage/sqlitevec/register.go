@@ -30,11 +30,23 @@ static int register_vec(void) {
 */
 import "C"
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
-func init() {
-	rc := C.register_vec()
-	if rc != 0 {
-		panic(fmt.Sprintf("sqlitevec: sqlite3_auto_extension failed with rc=%d", rc))
-	}
+var initOnce sync.Once
+var initErr error
+
+// Init registers the sqlite-vec extension with SQLite. It is safe to call
+// multiple times; the registration happens at most once. Returns an error
+// instead of panicking if the C call fails.
+func Init() error {
+	initOnce.Do(func() {
+		rc := C.register_vec()
+		if rc != 0 {
+			initErr = fmt.Errorf("sqlitevec: sqlite3_auto_extension failed with rc=%d", rc)
+		}
+	})
+	return initErr
 }

@@ -76,13 +76,9 @@ func (e *Engine) BuildGraph(ctx context.Context, conversationID string) (string,
 
 // buildGraphSync runs the full extraction pipeline synchronously.
 func (e *Engine) buildGraphSync(ctx context.Context, conversationID string) error {
-	// Clear old graph data before rebuilding
-	if err := e.store.ClearGraph(ctx); err != nil {
-		return fmt.Errorf("clearing old graph: %w", err)
-	}
-	e.graph = NewGraphStore()
-
-	// Load messages in batches
+	// Load messages and extract entities into temporary variables first.
+	// Only clear the old graph after successful extraction so that a failure
+	// leaves the previous graph intact.
 	const batchSize = 50
 	offset := 0
 
@@ -131,7 +127,8 @@ func (e *Engine) buildGraphSync(ctx context.Context, conversationID string) erro
 		entityMap[key] = ent
 	}
 
-	// Save to database and build in-memory graph
+	// Build storage entities and in-memory graph in temporary variables
+	newGraph := NewGraphStore()
 	entityIDMap := make(map[string]string) // name -> entity ID
 
 	var storageEntities []storage.Entity
@@ -148,11 +145,7 @@ func (e *Engine) buildGraphSync(ctx context.Context, conversationID string) erro
 			SourceConversation: conversationID,
 		})
 
-		e.graph.AddNode(id)
-	}
-
-	if err := e.store.SaveEntities(ctx, storageEntities); err != nil {
-		return fmt.Errorf("saving entities: %w", err)
+		newGraph.AddNode(id)
 	}
 
 	// Build relationships
@@ -176,7 +169,16 @@ func (e *Engine) buildGraphSync(ctx context.Context, conversationID string) erro
 			Weight:         1.0,
 		})
 
-		_ = e.graph.AddEdge(sourceID, targetID, 1.0)
+		_ = newGraph.AddEdge(sourceID, targetID, 1.0)
+	}
+
+	// Extraction succeeded — now clear old data and persist new data
+	if err := e.store.ClearGraph(ctx); err != nil {
+		return fmt.Errorf("clearing old graph: %w", err)
+	}
+
+	if err := e.store.SaveEntities(ctx, storageEntities); err != nil {
+		return fmt.Errorf("saving entities: %w", err)
 	}
 
 	if len(storageRels) > 0 {
@@ -184,6 +186,9 @@ func (e *Engine) buildGraphSync(ctx context.Context, conversationID string) erro
 			return fmt.Errorf("saving relationships: %w", err)
 		}
 	}
+
+	// Swap in the new graph only after all persistence succeeds
+	e.graph = newGraph
 
 	return nil
 }

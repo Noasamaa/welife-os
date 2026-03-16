@@ -154,7 +154,7 @@ func (s *Store) GetConversation(ctx context.Context, id string) (Conversation, e
 		Scan(&c.ID, &c.Platform, &c.ConversationType, &c.Title,
 			&c.MessageCount, &c.FirstMessageAt, &c.LastMessageAt, &importedAt)
 	if err == sql.ErrNoRows {
-		return c, fmt.Errorf("conversation %q not found", id)
+		return c, fmt.Errorf("conversation %q: %w", id, ErrNotFound)
 	}
 	return c, err
 }

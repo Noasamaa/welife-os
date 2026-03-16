@@ -122,11 +122,8 @@ func (s *Server) handleDeleteConversation(w http.ResponseWriter, r *http.Request
 
 func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request) {
 	convID := chi.URLParam(r, "id")
-	limit := queryInt(r, "limit", 50)
-	if limit > maxMessagePageSize {
-		limit = maxMessagePageSize
-	}
-	offset := queryInt(r, "offset", 0)
+	limit := queryInt(r, "limit", 50, maxMessagePageSize)
+	offset := queryInt(r, "offset", 0, 0)
 
 	msgs, err := s.store.GetMessages(r.Context(), convID, limit, offset)
 	if err != nil {
@@ -144,7 +141,7 @@ func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func queryInt(r *http.Request, key string, fallback int) int {
+func queryInt(r *http.Request, key string, fallback int, max int) int {
 	v := r.URL.Query().Get(key)
 	if v == "" {
 		return fallback
@@ -152,6 +149,9 @@ func queryInt(r *http.Request, key string, fallback int) int {
 	var n int
 	if _, err := fmt.Sscanf(v, "%d", &n); err != nil || n < 0 {
 		return fallback
+	}
+	if max > 0 && n > max {
+		return max
 	}
 	return n
 }
