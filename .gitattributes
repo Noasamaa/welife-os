@@ -1,0 +1,5 @@
+# Mark vendored C amalgamation files as generated (exclude from language stats)
+engine/internal/storage/sqlitevec/sqlite3.h linguist-generated
+engine/internal/storage/sqlitevec/sqlite3ext.h linguist-generated
+engine/internal/storage/sqlitevec/sqlite-vec.c linguist-generated
+engine/internal/storage/sqlitevec/sqlite-vec.h linguist-generated
