@@ -1,5 +1,5 @@
 <template>
-  <div class="graph-view">
+  <div class="graph-view" :class="{ fullscreen: isFullscreen }" ref="graphViewRef">
     <div v-if="loading" class="center">加载中...</div>
     <div v-else-if="error" class="center error">{{ error }}</div>
     <div v-else-if="!overview || overview.nodes.length === 0" class="center empty">
@@ -18,6 +18,9 @@
           <button class="ctrl-btn" title="放大" @click="controls.zoomIn()">+</button>
           <button class="ctrl-btn" title="缩小" @click="controls.zoomOut()">-</button>
           <button class="ctrl-btn" title="重置视图" @click="controls.resetView()">&#8962;</button>
+          <button class="ctrl-btn" :title="isFullscreen ? '退出全屏' : '沉浸模式'" @click="toggleFullscreen">
+            {{ isFullscreen ? '✕' : '⛶' }}
+          </button>
         </div>
       </div>
       <div class="graph-canvas-wrapper">
@@ -38,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, toRef, computed } from "vue";
+import { ref, watch, nextTick, toRef, computed, onMounted, onUnmounted } from "vue";
 import type { GraphOverview } from "../types/import";
 import { usePixiGraph } from "../composables/usePixiGraph";
 import GraphFilterPanel from "./GraphFilterPanel.vue";
@@ -54,6 +57,8 @@ const emit = defineEmits<{
 }>();
 
 const containerRef = ref<HTMLElement | null>(null);
+const graphViewRef = ref<HTMLElement | null>(null);
+const isFullscreen = ref(false);
 
 const controls = usePixiGraph(
   containerRef,
@@ -82,6 +87,40 @@ function entityTypeLabel(type: string): string {
   return ENTITY_TYPE_LABELS[type] ?? type;
 }
 
+async function toggleFullscreen() {
+  if (!graphViewRef.value) return;
+
+  if (!isFullscreen.value) {
+    isFullscreen.value = true;
+    document.body.style.overflow = "hidden";
+  } else {
+    isFullscreen.value = false;
+    document.body.style.overflow = "";
+  }
+
+  // Wait for CSS transition then reinit pixi to match new container size
+  await nextTick();
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  controls.reinit();
+}
+
+function handleEsc(e: KeyboardEvent) {
+  if (e.key === "Escape" && isFullscreen.value) {
+    toggleFullscreen();
+  }
+}
+
+onMounted(() => {
+  document.addEventListener("keydown", handleEsc);
+});
+
+onUnmounted(() => {
+  document.removeEventListener("keydown", handleEsc);
+  if (isFullscreen.value) {
+    document.body.style.overflow = "";
+  }
+});
+
 watch(
   () => props.overview,
   async (newOverview) => {
@@ -105,6 +144,50 @@ watch(containerRef, async (el) => {
   min-height: 300px;
   display: flex;
   flex-direction: column;
+}
+
+.graph-view.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  background: #0d1117;
+  padding: 16px;
+  min-height: unset;
+}
+
+.graph-view.fullscreen .pixi-container {
+  height: 100% !important;
+  border-radius: 0;
+}
+
+.graph-view.fullscreen .graph-canvas-wrapper {
+  flex: 1;
+  min-height: 0;
+}
+
+.graph-view.fullscreen .stats-bar {
+  color: #e0e0e0;
+}
+
+.graph-view.fullscreen .stat {
+  color: #e0e0e0;
+}
+
+.graph-view.fullscreen .tag {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ccc;
+}
+
+.graph-view.fullscreen .ctrl-btn {
+  color: #ccc;
+}
+
+.graph-view.fullscreen .ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
 }
 
 .center {
@@ -179,7 +262,7 @@ watch(containerRef, async (el) => {
   width: 100%;
   height: 500px;
   border-radius: var(--radius-lg);
-  background: #111827;
+  background: #0d1117;
   overflow: hidden;
   position: relative;
 }

@@ -2,26 +2,26 @@ import { ref, onUnmounted, type Ref } from "vue";
 import { Application, Container, Graphics, Text } from "pixi.js";
 import type { GraphOverview, GraphEdge } from "../types/import";
 
-// --- Entity type color mapping (same palette as before) ---
+// --- Obsidian-style color palette (soft, muted tones) ---
 const TYPE_COLORS: Record<string, number> = {
-  person: 0x2d6a4f,
-  event: 0xe67e22,
-  topic: 0x3498db,
-  promise: 0x9b59b6,
-  place: 0xe74c3c,
+  person: 0x7ee8a8,
+  event: 0xf0b866,
+  topic: 0x7aadff,
+  promise: 0xc4a0f5,
+  place: 0xf5827a,
 };
-const DEFAULT_NODE_COLOR = 0x888888;
-const EDGE_COLOR = 0xffffff;
-const BG_COLOR = 0x1a1a2e;
+const DEFAULT_NODE_COLOR = 0x999999;
+const EDGE_COLOR = 0x888888;
+const BG_COLOR = 0x0d1117;
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 5;
 
 // Alpha values for Obsidian-style hover highlighting
-const ALPHA_HOVER_NEIGHBOR = 0.8;
-const ALPHA_HOVER_DIM = 0.15;
-const EDGE_ALPHA_NORMAL = 0.25;
-const EDGE_ALPHA_BRIGHT = 0.9;
-const EDGE_ALPHA_DIM = 0.05;
+const ALPHA_HOVER_NEIGHBOR = 0.9;
+const ALPHA_HOVER_DIM = 0.08;
+const EDGE_ALPHA_NORMAL = 0.12;
+const EDGE_ALPHA_BRIGHT = 0.6;
+const EDGE_ALPHA_DIM = 0.03;
 
 interface NodeGfx {
   container: Container;
@@ -133,7 +133,7 @@ export function usePixiGraph(
         edgesGfx.moveTo(src.container.x, src.container.y);
         edgesGfx.lineTo(tgt.container.x, tgt.container.y);
       }
-      edgesGfx.stroke({ color: EDGE_COLOR, alpha: EDGE_ALPHA_NORMAL, width: 0.8 });
+      edgesGfx.stroke({ color: EDGE_COLOR, alpha: EDGE_ALPHA_NORMAL, width: 0.5 });
     } else {
       // Dim edges first
       for (const edge of edgeList) {
@@ -145,7 +145,7 @@ export function usePixiGraph(
         edgesGfx.moveTo(src.container.x, src.container.y);
         edgesGfx.lineTo(tgt.container.x, tgt.container.y);
       }
-      edgesGfx.stroke({ color: EDGE_COLOR, alpha: EDGE_ALPHA_DIM, width: 0.5 });
+      edgesGfx.stroke({ color: EDGE_COLOR, alpha: EDGE_ALPHA_DIM, width: 0.3 });
       // Bright connected edges on top
       for (const edge of edgeList) {
         if (edge.source !== h && edge.target !== h) continue;
@@ -156,7 +156,7 @@ export function usePixiGraph(
         edgesGfx.moveTo(src.container.x, src.container.y);
         edgesGfx.lineTo(tgt.container.x, tgt.container.y);
       }
-      edgesGfx.stroke({ color: EDGE_COLOR, alpha: EDGE_ALPHA_BRIGHT, width: 1.2 });
+      edgesGfx.stroke({ color: EDGE_COLOR, alpha: EDGE_ALPHA_BRIGHT, width: 0.8 });
     }
   }
 
@@ -176,7 +176,7 @@ export function usePixiGraph(
         node.circle.scale.set(1);
       } else if (id === h) {
         node.container.alpha = 1;
-        node.circle.scale.set(1.2);
+        node.circle.scale.set(1.4);
       } else if (neighbors?.has(id)) {
         node.container.alpha = ALPHA_HOVER_NEIGHBOR;
         node.circle.scale.set(1);
@@ -358,30 +358,42 @@ export function usePixiGraph(
     adjacency = buildAdjacency(edgeList);
     degreeCache = degreeMap;
 
-    // 5. Create node graphics (pixi.Graphics circle + pixi.Text label)
+    // 5. Create node graphics (Obsidian-style: soft filled dot with glow)
     for (const node of data.nodes) {
       const degree = degreeMap.get(node.id) ?? 0;
-      const radius = Math.max(4, Math.sqrt(degree) * 3);
+      const radius = Math.max(3, 2 + Math.sqrt(degree) * 2.5);
       const color = TYPE_COLORS[node.type] ?? DEFAULT_NODE_COLOR;
 
       const nodeContainer = new Container();
 
+      // Outer glow ring (soft, larger, semi-transparent)
+      const glow = new Graphics();
+      glow.circle(0, 0, radius * 2.5);
+      glow.fill({ color, alpha: 0.06 });
+      nodeContainer.addChild(glow);
+
+      // Core dot (solid, no stroke for clean look)
       const circle = new Graphics();
       circle.circle(0, 0, radius);
-      circle.fill(color);
-      circle.stroke({ color: 0xffffff, width: 1.5, alpha: 0.3 });
+      circle.fill({ color, alpha: 0.9 });
       nodeContainer.addChild(circle);
 
       const label = new Text({
         text: node.name,
-        style: { fontSize: 11, fill: 0xe0e0e0, fontFamily: "Inter, system-ui, sans-serif" },
+        style: {
+          fontSize: 10,
+          fill: 0xaaaaaa,
+          fontFamily: "Inter, system-ui, sans-serif",
+          fontWeight: "400",
+        },
       });
       label.anchor.set(0.5, 0);
-      label.y = radius + 4;
+      label.y = radius + 5;
       label.resolution = 2;
       nodeContainer.addChild(label);
 
-      // Pointer interaction
+      // Enlarge hit area beyond visible dot
+      circle.hitArea = { contains: (x: number, y: number) => x * x + y * y <= (radius + 8) * (radius + 8) };
       circle.eventMode = "static";
       circle.cursor = "pointer";
 
@@ -497,7 +509,8 @@ export function usePixiGraph(
         }
         drawEdges();
         tickCount++;
-        if (!stabilized && tickCount % 10 === 0) fitToView();
+        // Fit to view once after initial layout settles (first tick only)
+        if (tickCount === 1) fitToView();
       } else if (e.data.type === "stabilized") {
         stabilized = true;
         fitToView();

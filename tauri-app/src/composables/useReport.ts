@@ -29,7 +29,7 @@ export function useReport() {
   });
 
   async function loadReports() {
-    loading.value = true;
+    if (reports.value.length === 0) loading.value = true;
     error.value = null;
     try {
       reports.value = await fetchReports();
@@ -41,7 +41,7 @@ export function useReport() {
   }
 
   async function loadReport(id: string) {
-    loading.value = true;
+    if (!currentReport.value) loading.value = true;
     error.value = null;
     try {
       currentReport.value = await fetchReport(id);

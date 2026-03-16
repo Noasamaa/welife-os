@@ -40,11 +40,11 @@ import { ref, computed, onUnmounted } from "vue";
 import type { GraphFilters } from "../composables/usePixiGraph";
 
 const TYPE_COLORS: Record<string, string> = {
-  person: "#2d6a4f",
-  event: "#e67e22",
-  topic: "#3498db",
-  promise: "#9b59b6",
-  place: "#e74c3c",
+  person: "#7ee8a8",
+  event: "#f0b866",
+  topic: "#7aadff",
+  promise: "#c4a0f5",
+  place: "#f5827a",
 };
 
 const TYPE_LABELS: Record<string, string> = {
