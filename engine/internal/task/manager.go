@@ -140,7 +140,16 @@ func (m *Manager) runJob(ctx context.Context, current job) {
 		info.UpdatedAt = time.Now()
 	})
 
-	err := current.fn(ctx)
+	var err error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				err = fmt.Errorf("task panicked: %v", r)
+			}
+		}()
+		err = current.fn(ctx)
+	}()
+
 	if err != nil && !errors.Is(err, context.Canceled) {
 		m.update(current.id, func(info *Info) {
 			info.Status = StatusFailed

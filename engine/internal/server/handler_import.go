@@ -132,7 +132,10 @@ func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	total, _ := s.store.MessageCount(r.Context(), convID)
+	total, err := s.store.MessageCount(r.Context(), convID)
+	if err != nil {
+		log.Printf("[WARN] get-messages: message count: %v", err)
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"messages": msgs,
 		"total":    total,

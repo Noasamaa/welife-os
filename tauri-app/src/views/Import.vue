@@ -71,7 +71,7 @@ async function onBuildGraph() {
   }
   graphStatus.value = "图谱构建任务已提交，正在后台处理...";
 
-  const taskId = (result as { task_id: string }).task_id;
+  const taskId = result.task_id;
   const { promise, cancel } = pollTaskUntilDone(taskId, (info) => {
     if (info.status === "running") {
       graphStatus.value = "图谱构建中...";
@@ -100,8 +100,8 @@ async function onBuildGraph() {
 async function loadConversations() {
   try {
     conversations.value = await fetchConversations();
-  } catch {
-    // ignore
+  } catch (e: unknown) {
+    importError.value = e instanceof Error ? e.message : "加载对话列表失败";
   }
 }
 

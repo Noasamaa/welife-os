@@ -55,6 +55,7 @@ func (s *Store) GetReport(ctx context.Context, id string) (Report, error) {
 }
 
 // ListReports returns all reports ordered by creation time.
+// Note: content is omitted from list queries for performance; use GetReport for full content.
 func (s *Store) ListReports(ctx context.Context) ([]Report, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, type, conversation_id, task_id, status, title,
