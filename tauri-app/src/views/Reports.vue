@@ -39,11 +39,23 @@
 
         <button
           class="btn-primary"
-          :disabled="!selectedConversation || generating"
+          :disabled="!selectedConversation || generating || reportGenerating"
           @click="handleGenerate"
         >
-          {{ generating ? '生成中...' : '生成报告' }}
+          {{ (generating || reportGenerating) ? '生成中...' : '生成报告' }}
         </button>
+      </div>
+
+      <!-- Progress indicator -->
+      <div v-if="reportGenerating" class="generate-progress">
+        <div class="progress-row">
+          <span class="progress-spinner"></span>
+          <span class="progress-text">{{ generateStatus }}</span>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" :style="{ width: generateProgress + '%' }"></div>
+        </div>
+        <div class="progress-elapsed">已用时 {{ formatElapsed(generateElapsed) }}</div>
       </div>
     </div>
 
@@ -131,7 +143,12 @@ const {
 const conversations = ref<Conversation[]>([]);
 const selectedConversation = ref("");
 const selectedType = ref<ReportType>("weekly");
+const reportGenerating = ref(false);
+const generateStatus = ref("");
+const generateProgress = ref(0);
+const generateElapsed = ref(0);
 let cancelPoll: (() => void) | null = null;
+let elapsedHandle: ReturnType<typeof setInterval> | null = null;
 
 const reportTypes = [
   { value: "weekly" as ReportType, label: "每周简报" },
@@ -141,10 +158,16 @@ const reportTypes = [
 
 onMounted(async () => {
   await Promise.all([loadReports(), loadConversations()]);
+  // Auto-open the latest completed report
+  const latest = reports.value.find((r) => r.status === "completed");
+  if (latest) {
+    await loadReport(latest.id);
+  }
 });
 
 onUnmounted(() => {
   cancelPoll?.();
+  stopElapsed();
 });
 
 async function loadConversations() {
@@ -157,16 +180,46 @@ async function loadConversations() {
 
 async function handleGenerate() {
   if (!selectedConversation.value) return;
+
+  reportGenerating.value = true;
+  generateStatus.value = "正在提交报告生成任务...";
+  generateProgress.value = 5;
+  generateElapsed.value = 0;
+  startElapsed();
+
   const result = await generate(selectedType.value, selectedConversation.value);
-  if (!result) return;
+  if (!result) {
+    reportGenerating.value = false;
+    stopElapsed();
+    return;
+  }
+
+  generateStatus.value = "AI 正在分析对话内容...";
+  generateProgress.value = 15;
 
   cancelPoll?.();
-  const { promise, cancel } = pollTaskUntilDone(result.task_id);
+  let pollCount = 0;
+  const { promise, cancel } = pollTaskUntilDone(result.task_id, () => {
+    pollCount++;
+    // Simulate progress stages
+    if (pollCount <= 3) {
+      generateStatus.value = "正在提取关键信息...";
+      generateProgress.value = Math.min(30, 15 + pollCount * 5);
+    } else if (pollCount <= 8) {
+      generateStatus.value = "正在生成报告内容...";
+      generateProgress.value = Math.min(70, 30 + (pollCount - 3) * 8);
+    } else {
+      generateStatus.value = "正在整理和排版...";
+      generateProgress.value = Math.min(90, 70 + (pollCount - 8) * 4);
+    }
+  });
   cancelPoll = cancel;
 
   try {
     const info = await promise;
     if (info.status === "succeeded") {
+      generateStatus.value = "报告生成完成！";
+      generateProgress.value = 100;
       await loadReports();
       await loadReport(result.report_id);
     } else {
@@ -176,7 +229,38 @@ async function handleGenerate() {
     error.value = e instanceof Error ? e.message : "轮询报告状态失败";
   } finally {
     cancelPoll = null;
+    // Keep success state visible briefly
+    if (generateProgress.value === 100) {
+      window.setTimeout(() => {
+        reportGenerating.value = false;
+        stopElapsed();
+      }, 1500);
+    } else {
+      reportGenerating.value = false;
+      stopElapsed();
+    }
   }
+}
+
+function startElapsed() {
+  stopElapsed();
+  elapsedHandle = setInterval(() => {
+    generateElapsed.value += 1;
+  }, 1000);
+}
+
+function stopElapsed() {
+  if (elapsedHandle !== null) {
+    clearInterval(elapsedHandle);
+    elapsedHandle = null;
+  }
+}
+
+function formatElapsed(seconds: number): string {
+  if (seconds < 60) return `${seconds}秒`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}分${s}秒`;
 }
 
 async function handleSelect(id: string) {
@@ -270,6 +354,60 @@ function buildExportFilename(format: "html" | "pdf"): string {
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.generate-progress {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.progress-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.progress-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.progress-bar-track {
+  height: 4px;
+  background: var(--color-bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.progress-elapsed {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 
 .form-select {
