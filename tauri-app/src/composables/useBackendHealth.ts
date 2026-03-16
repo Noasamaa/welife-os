@@ -12,7 +12,10 @@ const errorMessage = ref<string | null>(null);
 let pollHandle: number | null = null;
 
 async function checkHealth(): Promise<void> {
-  status.value = "checking";
+  // Don't flash "checking" on subsequent polls — only on first check
+  if (status.value !== "healthy" && status.value !== "unreachable") {
+    status.value = "checking";
+  }
   try {
     apiBaseUrl.value = await getAPIBaseURL();
     systemStatus.value = await fetchSystemStatus();

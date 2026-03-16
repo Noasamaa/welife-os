@@ -189,7 +189,9 @@ function priorityLabel(p: string): string { return PRIORITY_LABELS[p] ?? p; }
 
 function relativeTime(time: string): string {
   if (!time) return "";
-  const d = new Date(time);
+  // Backend stores UTC without suffix — append Z so JS parses as UTC
+  const normalized = time.includes("T") || time.includes("Z") ? time : time.replace(" ", "T") + "Z";
+  const d = new Date(normalized);
   if (isNaN(d.getTime())) return "";
   const diff = Math.floor((Date.now() - d.getTime()) / 60000);
   if (diff < 1) return "刚刚";

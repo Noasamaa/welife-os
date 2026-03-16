@@ -16,7 +16,7 @@
           <div class="message-header">
             <span class="agent-name">{{ agentDisplayName(msg.agent_name) }}</span>
             <span class="stance-badge" :class="stanceClass(msg.stance)">
-              {{ msg.stance }}
+              {{ stanceLabel(msg.stance) }}
             </span>
             <span class="confidence">置信度: {{ (msg.confidence * 100).toFixed(0) }}%</span>
           </div>
@@ -55,8 +55,10 @@ function messagesForRound(round: number): ForumMessage[] {
 function agentDisplayName(name: string): string {
   const names: Record<string, string> = {
     emotion_analyst: "情感分析师",
-    opportunity_miner: "机会挖掘师",
-    risk_debate_team: "风险辩论团",
+    opportunity_agent: "机会探索者",
+    risk_agent: "风险评估师",
+    execution_coach: "执行教练",
+    simulator_agent: "模拟推演师",
   };
   return names[name] ?? name;
 }
@@ -66,8 +68,25 @@ function agentClass(name: string): string {
 }
 
 function stanceClass(stance: string): string {
-  if (stance === "analysis") return "stance-analysis";
-  return "stance-debate";
+  const m: Record<string, string> = {
+    analysis: "stance-analysis",
+    support: "stance-support",
+    oppose: "stance-oppose",
+    neutral: "stance-neutral",
+    synthesize: "stance-synthesize",
+  };
+  return m[stance] ?? "stance-debate";
+}
+
+function stanceLabel(stance: string): string {
+  const m: Record<string, string> = {
+    analysis: "分析",
+    support: "支持",
+    oppose: "反对",
+    neutral: "中立",
+    synthesize: "综合",
+  };
+  return m[stance] ?? stance;
 }
 
 function stringifyEvidenceItem(item: unknown): string | null {
@@ -163,17 +182,11 @@ function normalizedEvidence(evidence?: string): string[] {
   border-left: 3px solid var(--color-border-strong);
 }
 
-.message-card.agent-emotion-analyst {
-  border-left-color: var(--color-danger);
-}
-
-.message-card.agent-opportunity-miner {
-  border-left-color: var(--color-success);
-}
-
-.message-card.agent-risk-debate-team {
-  border-left-color: var(--color-warning);
-}
+.message-card.agent-emotion-analyst { border-left-color: #f5827a; }
+.message-card.agent-opportunity-agent { border-left-color: #7ee8a8; }
+.message-card.agent-risk-agent { border-left-color: #f0b866; }
+.message-card.agent-execution-coach { border-left-color: #7aadff; }
+.message-card.agent-simulator-agent { border-left-color: #c4a0f5; }
 
 .message-header {
   display: flex;
@@ -198,15 +211,12 @@ function normalizedEvidence(evidence?: string): string[] {
   font-weight: 500;
 }
 
-.stance-analysis {
-  color: var(--color-info);
-  background: var(--color-info-bg);
-}
-
-.stance-debate {
-  color: var(--color-warning);
-  background: var(--color-warning-bg);
-}
+.stance-analysis { color: var(--color-info); background: var(--color-info-bg); }
+.stance-support { color: var(--color-success); background: var(--color-success-bg); }
+.stance-oppose { color: var(--color-danger); background: var(--color-danger-bg); }
+.stance-neutral { color: var(--color-text-muted); background: var(--color-bg-tertiary); }
+.stance-synthesize { color: #c4a0f5; background: rgba(196,160,245,0.12); }
+.stance-debate { color: var(--color-warning); background: var(--color-warning-bg); }
 
 .confidence {
   margin-left: auto;

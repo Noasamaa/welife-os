@@ -475,17 +475,17 @@ h1, h2, h3, h4, h5, h6 {
 
 .status-pill.ok {
   color: var(--color-success);
-  background: var(--color-success-bg);
+  background: transparent;
 }
 
 .status-pill.warn {
   color: var(--color-warning);
-  background: var(--color-warning-bg);
+  background: transparent;
 }
 
 .status-pill.pending {
   color: var(--color-muted);
-  background: var(--color-muted-bg);
+  background: transparent;
 }
 
 /* ── Section Headers ── */

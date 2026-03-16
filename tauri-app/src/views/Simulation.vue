@@ -34,7 +34,10 @@
           {{ building ? '构建中...' : '构建画像' }}
         </button>
       </div>
-      <div v-if="profileStatus" class="status-note">{{ profileStatus }}</div>
+      <div v-if="profileStatus" class="profile-building-banner">
+        <span v-if="building" class="building-spinner"></span>
+        <span>{{ profileStatus }}</span>
+      </div>
       <div v-if="profiles.length === 0 && !building" class="empty">暂无画像，点击「构建画像」从知识图谱生成。</div>
       <div class="profile-gallery">
         <div
@@ -116,25 +119,36 @@
 
     <!-- Detail -->
     <div v-if="currentSession" class="card">
-      <h3>模拟结果</h3>
+      <h3>模拟结果 · {{ currentSession.session.fork_description }}</h3>
 
-      <SimulationGraph
-        :original-snapshot="currentSession.session.original_graph_snapshot"
-        :final-snapshot="currentSession.session.final_graph_snapshot"
-      />
-
+      <!-- Narrative first — the most readable part -->
       <div v-if="currentSession.session.narrative" class="narrative-box">
         <h4>平行人生叙事</h4>
         <p>{{ currentSession.session.narrative }}</p>
       </div>
 
+      <!-- Evolution steps -->
       <div v-if="currentSession.steps && currentSession.steps.length > 0" class="steps">
-        <h4>演化步骤</h4>
-        <div v-for="step in currentSession.steps" :key="step.id" class="step-card">
-          <span class="step-num">第 {{ step.step_number }} 步</span>
-          <p>{{ step.description }}</p>
+        <h4>演化过程</h4>
+        <div class="steps-timeline">
+          <div v-for="step in currentSession.steps" :key="step.id" class="step-row">
+            <div class="step-marker">
+              <span class="step-dot"></span>
+              <span v-if="step.step_number < (currentSession.steps?.length ?? 0)" class="step-stem"></span>
+            </div>
+            <div class="step-body">
+              <span class="step-num">第 {{ step.step_number }} 步</span>
+              <p class="step-desc">{{ step.description }}</p>
+            </div>
+          </div>
         </div>
       </div>
+
+      <!-- Graph comparison at the bottom -->
+      <SimulationGraph
+        :original-snapshot="currentSession.session.original_graph_snapshot"
+        :final-snapshot="currentSession.session.final_graph_snapshot"
+      />
     </div>
   </section>
 </template>
@@ -346,6 +360,33 @@ async function handleSelectSession(id: string) {
   margin-bottom: 12px;
   font-size: 13px;
   color: var(--color-text-secondary);
+}
+
+.profile-building-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px 16px;
+  background: var(--color-info-bg);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-info);
+}
+
+.building-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: sim-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes sim-spin {
+  to { transform: rotate(360deg); }
 }
 
 .btn-primary {
@@ -617,34 +658,66 @@ async function handleSelectSession(id: string) {
 }
 
 .steps {
-  margin-top: 16px;
+  margin-top: 20px;
 }
 
 .steps h4 {
-  margin: 0 0 12px;
+  margin: 0 0 14px;
   font-size: 14px;
   font-weight: 600;
 }
 
-.step-card {
-  padding: 10px 12px;
-  border-left: 2px solid var(--color-primary);
-  margin-bottom: 8px;
-  background: var(--color-bg-secondary);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+.steps-timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.step-row {
+  display: flex;
+  gap: 12px;
+}
+
+.step-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.step-stem {
+  flex: 1;
+  width: 1.5px;
+  background: var(--color-border);
+  margin: 4px 0;
+}
+
+.step-body {
+  flex: 1;
+  padding-bottom: 16px;
 }
 
 .step-num {
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--color-primary);
 }
 
-.step-card p {
+.step-desc {
   margin: 4px 0 0;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.7;
   color: var(--color-text-secondary);
+  white-space: pre-wrap;
 }
 
 @media (max-width: 768px) {

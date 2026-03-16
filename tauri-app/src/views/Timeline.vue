@@ -186,7 +186,9 @@ async function reload() {
 
 function parseDate(time: string): Date | null {
   if (!time) return null;
-  const d = new Date(time);
+  // Backend stores UTC without suffix — append Z so JS parses as UTC
+  const normalized = time.includes("T") || time.includes("Z") ? time : time.replace(" ", "T") + "Z";
+  const d = new Date(normalized);
   return isNaN(d.getTime()) ? null : d;
 }
 
