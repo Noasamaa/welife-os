@@ -16,7 +16,7 @@ jobs:
         include:
           - platform: ubuntu-22.04
             go_binary: welife-engine
-          - platform: macos-13
+          - platform: macos-latest
             go_binary: welife-engine
           - platform: windows-latest
             go_binary: welife-engine.exe
@@ -45,7 +45,7 @@ jobs:
             patchelf
 
       - name: Install system deps (macOS)
-        if: matrix.platform == 'macos-13'
+        if: matrix.platform == 'macos-latest'
         run: brew install sqlcipher pkg-config
 
       - name: Build Go engine
@@ -56,7 +56,7 @@ jobs:
         run: |
           mkdir -p ../tauri-app/src-tauri/bin
 
-          if [[ "${{ matrix.platform }}" == "macos-13" ]]; then
+          if [[ "${{ matrix.platform }}" == "macos-latest" ]]; then
             export CGO_CFLAGS="-I$(brew --prefix sqlcipher)/include"
             export CGO_LDFLAGS="-L$(brew --prefix sqlcipher)/lib"
           fi
