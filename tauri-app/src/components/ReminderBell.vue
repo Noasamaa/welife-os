@@ -16,18 +16,24 @@ defineEmits<{ click: [] }>();
   cursor: pointer;
   padding: 4px 8px;
   font-size: 18px;
+  transition: opacity var(--transition-fast);
 }
+
+.reminder-bell:hover {
+  opacity: 0.8;
+}
+
 .badge {
   position: absolute;
   top: -2px;
   right: 0;
   background: var(--color-danger);
-  color: white;
+  color: var(--color-text-inverse);
   font-size: 10px;
   font-weight: 600;
   min-width: 16px;
   height: 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;

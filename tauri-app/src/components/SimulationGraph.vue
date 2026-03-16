@@ -89,16 +89,31 @@ const finalOption = computed(() => parseSnapshot(props.finalSnapshot));
 </script>
 
 <style scoped>
-.sim-graph-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.graph-panel {
-  border: 1px solid var(--color-border, #e0e0e0);
-  border-radius: 8px;
-  padding: 12px;
-  background: var(--color-bg-card, #fff);
+.sim-graph-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 }
-.graph-panel h4 { margin: 0 0 8px; font-size: 14px; }
+
+.graph-panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  background: var(--color-bg-card);
+}
+
+.graph-panel h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
 .placeholder {
-  height: 200px; display: flex; align-items: center; justify-content: center;
-  color: var(--color-text-secondary, #888); font-size: 13px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-size: 13px;
 }
 </style>

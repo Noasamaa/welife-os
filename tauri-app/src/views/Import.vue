@@ -126,12 +126,20 @@ function stopGraphPolling() {
 
 <style scoped>
 .import-page {
-  display: grid;
-  gap: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .block {
   padding: 24px;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
 }
 
 .graph-header {
@@ -146,14 +154,20 @@ function stopGraphPolling() {
 }
 
 .btn {
-  padding: 6px 16px;
-  border: none;
-  border-radius: 6px;
-  background: var(--color-primary);
-  color: #fff;
-  font-weight: 600;
-  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
   font-size: 13px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
 }
 
 .btn:disabled {
@@ -167,7 +181,7 @@ function stopGraphPolling() {
 
 .status-msg {
   margin-top: 12px;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--color-text-secondary);
 }
 
@@ -180,22 +194,21 @@ function stopGraphPolling() {
   align-items: center;
   gap: 10px;
   margin-top: 12px;
-  padding: 12px 16px;
-  background: var(--color-info-bg, #e8f4fd);
-  border: 1px solid var(--color-info, #4a90d9);
-  border-radius: 8px;
-  font-size: 14px;
+  padding: 10px 14px;
+  background: var(--color-info-bg);
+  border-radius: var(--radius-md);
+  font-size: 13px;
   font-weight: 500;
-  color: var(--color-info, #2980b9);
+  color: var(--color-info);
 }
 
 .spinner {
   display: inline-block;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border: 2px solid currentColor;
   border-right-color: transparent;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   animation: spin 0.8s linear infinite;
   flex-shrink: 0;
 }

@@ -63,6 +63,9 @@ function isChartData(value: unknown): value is ReportChartData {
 .report-chart {
   width: 100%;
   min-height: 350px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .chart-placeholder {
@@ -70,9 +73,9 @@ function isChartData(value: unknown): value is ReportChartData {
   align-items: center;
   justify-content: center;
   height: 200px;
-  color: var(--color-text-secondary, #888);
+  color: var(--color-text-muted);
   font-size: 14px;
-  background: var(--color-bg-secondary, #f8f9fa);
-  border-radius: 8px;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
 }
 </style>

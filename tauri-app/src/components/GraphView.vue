@@ -98,11 +98,11 @@ watch(containerRef, async (el) => {
 .center {
   text-align: center;
   padding: 40px;
-  color: #7a9a8e;
+  color: var(--color-text-muted);
 }
 
 .error {
-  color: #c0392b;
+  color: var(--color-danger);
 }
 
 .stats-bar {
@@ -114,22 +114,24 @@ watch(containerRef, async (el) => {
 
 .stats {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
   align-items: center;
 }
 
 .stat {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
+  color: var(--color-text);
 }
 
 .tag {
   font-size: 12px;
-  background: rgba(45, 106, 79, 0.08);
+  font-weight: 500;
   padding: 2px 8px;
-  border-radius: 4px;
-  color: #2d6a4f;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-tertiary);
 }
 
 .controls {
@@ -140,20 +142,21 @@ watch(containerRef, async (el) => {
 .ctrl-btn {
   width: 28px;
   height: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #ccc;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
   font-size: 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
+  transition: all var(--transition-fast);
 }
 
 .ctrl-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--color-bg-hover);
+  color: var(--color-text);
 }
 
 .graph-canvas-wrapper {
@@ -163,8 +166,8 @@ watch(containerRef, async (el) => {
 .pixi-container {
   width: 100%;
   height: 500px;
-  border-radius: 8px;
-  background: #1a1a2e;
+  border-radius: var(--radius-lg);
+  background: #111827;
   overflow: hidden;
   position: relative;
 }
@@ -173,17 +176,18 @@ watch(containerRef, async (el) => {
   margin-top: 8px;
   padding: 6px 12px;
   font-size: 13px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
 }
 
 .node-info-label {
-  color: #888;
+  color: var(--color-text-muted);
   margin-right: 6px;
 }
 
 .node-info-name {
   font-weight: 600;
-  color: #e0e0e0;
+  color: var(--color-text);
 }
 </style>

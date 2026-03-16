@@ -122,7 +122,7 @@ function normalizedEvidence(evidence?: string): string[] {
 }
 
 .round-group {
-  border-left: 3px solid var(--color-border, #ddd);
+  border-left: 3px solid var(--color-border);
   padding-left: 16px;
 }
 
@@ -134,16 +134,18 @@ function normalizedEvidence(evidence?: string): string[] {
 }
 
 .round-badge {
-  background: var(--color-primary, #4a90d9);
-  color: white;
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 .round-label {
-  color: var(--color-text-secondary, #666);
+  color: var(--color-text-muted);
   font-size: 13px;
 }
 
@@ -154,23 +156,23 @@ function normalizedEvidence(evidence?: string): string[] {
 }
 
 .message-card {
-  background: var(--color-bg-card, #fff);
-  border: 1px solid var(--color-border, #e0e0e0);
-  border-radius: 8px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
   padding: 14px;
-  border-left: 4px solid #ccc;
+  border-left: 3px solid var(--color-border-strong);
 }
 
 .message-card.agent-emotion-analyst {
-  border-left-color: #e74c3c;
+  border-left-color: var(--color-danger);
 }
 
 .message-card.agent-opportunity-miner {
-  border-left-color: #27ae60;
+  border-left-color: var(--color-success);
 }
 
 .message-card.agent-risk-debate-team {
-  border-left-color: #f39c12;
+  border-left-color: var(--color-warning);
 }
 
 .message-header {
@@ -184,34 +186,38 @@ function normalizedEvidence(evidence?: string): string[] {
 .agent-name {
   font-weight: 600;
   font-size: 14px;
+  color: var(--color-text);
 }
 
 .stance-badge {
-  padding: 1px 8px;
-  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
+  font-weight: 500;
 }
 
 .stance-analysis {
-  background: #e8f4fd;
-  color: #2980b9;
+  color: var(--color-info);
+  background: var(--color-info-bg);
 }
 
 .stance-debate {
-  background: #fef3e2;
-  color: #e67e22;
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
 }
 
 .confidence {
   margin-left: auto;
-  color: var(--color-text-secondary, #888);
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 
 .message-content {
   font-size: 14px;
   line-height: 1.6;
-  color: var(--color-text, #333);
+  color: var(--color-text);
   white-space: pre-wrap;
 }
 
@@ -225,14 +231,14 @@ function normalizedEvidence(evidence?: string): string[] {
 
 .evidence-label {
   font-size: 12px;
-  color: var(--color-text-secondary, #888);
+  color: var(--color-text-muted);
 }
 
 .evidence-tag {
-  background: var(--color-bg-secondary, #f5f5f5);
-  padding: 1px 6px;
-  border-radius: 4px;
+  background: var(--color-bg-tertiary);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
   font-size: 11px;
-  color: var(--color-text-secondary, #666);
+  color: var(--color-text-secondary);
 }
 </style>

@@ -69,6 +69,7 @@ function typeLabel(type: string): string {
 
 .report-header h2 {
   margin: 0 0 8px;
+  color: var(--color-text);
 }
 
 .report-meta {
@@ -78,19 +79,30 @@ function typeLabel(type: string): string {
 }
 
 .type-badge {
-  padding: 2px 10px;
-  border-radius: 12px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
-.type-weekly { background: #e8f4fd; color: #2980b9; }
-.type-monthly { background: #e8f8ef; color: #27ae60; }
-.type-annual { background: #fef3e2; color: #e67e22; }
+.type-weekly {
+  color: var(--color-info);
+  background: var(--color-info-bg);
+}
+
+.type-monthly {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.type-annual {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
 
 .period {
   font-size: 13px;
-  color: var(--color-text-secondary, #888);
+  color: var(--color-text-secondary);
 }
 
 .sections {
@@ -100,15 +112,17 @@ function typeLabel(type: string): string {
 }
 
 .section-card {
-  background: var(--color-bg-card, #fff);
-  border: 1px solid var(--color-border, #e0e0e0);
-  border-radius: 8px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
   padding: 16px;
 }
 
 .section-title {
   margin: 0 0 12px;
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
 }
 
 .section-list {
@@ -119,35 +133,39 @@ function typeLabel(type: string): string {
 
 .list-item {
   padding: 8px 12px;
-  border-left: 3px solid var(--color-primary, #4a90d9);
+  border-left: 3px solid var(--color-primary);
   margin-bottom: 8px;
   font-size: 14px;
   line-height: 1.5;
+  color: var(--color-text);
 }
 
 .narrative {
   font-size: 14px;
   line-height: 1.7;
-  color: var(--color-text, #333);
+  color: var(--color-text);
   white-space: pre-wrap;
   margin: 0;
 }
 
 .summary-card {
-  background: var(--color-bg-secondary, #f8f9fa);
-  border-radius: 8px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
   padding: 16px;
 }
 
 .summary-card h3 {
   margin: 0 0 8px;
   font-size: 15px;
+  color: var(--color-text);
 }
 
 .summary-card p {
   margin: 0;
   font-size: 14px;
   line-height: 1.7;
+  color: var(--color-text-secondary);
   white-space: pre-wrap;
 }
 </style>

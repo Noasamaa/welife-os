@@ -316,37 +316,41 @@ onMounted(() => {
 
 <style scoped>
 .page {
-  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .page-header h2 {
   margin: 0;
+  font-size: 20px;
+  font-weight: 600;
 }
 
 .subtitle {
-  color: var(--color-text-secondary, #666);
+  color: var(--color-text-secondary);
   margin: 4px 0 0;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .settings-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
+  gap: 16px;
 }
 
 .card {
-  background: var(--color-bg-card, #fff);
-  border: 1px solid var(--color-border, #e0e0e0);
-  border-radius: 10px;
-  padding: 20px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
 }
 
 .card h3 {
   margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .info-list {
@@ -360,16 +364,24 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.info-row:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .info-label {
-  font-size: 14px;
-  color: var(--color-text-secondary, #666);
+  font-size: 13px;
+  color: var(--color-text-secondary);
   flex-shrink: 0;
 }
 
 .info-value {
   font-size: 14px;
+  color: var(--color-text);
   text-align: right;
   word-break: break-all;
 }
@@ -377,16 +389,18 @@ onMounted(() => {
 .info-value.mono {
   font-family: "SF Mono", "Fira Code", monospace;
   font-size: 12px;
+  color: var(--color-text-secondary);
 }
 
 .info-link {
   font-size: 14px;
-  color: var(--color-primary, #4a90d9);
+  color: var(--color-primary);
   text-decoration: none;
+  transition: opacity var(--transition-fast);
 }
 
 .info-link:hover {
-  text-decoration: underline;
+  opacity: 0.8;
 }
 
 .connection-status {
@@ -397,33 +411,38 @@ onMounted(() => {
 }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
   flex-shrink: 0;
 }
 
 .dot-ok {
-  background: #27ae60;
+  background: var(--color-success);
 }
 
 .dot-err {
-  background: #e74c3c;
-}
-
-.test-btn {
-  margin-top: 16px;
+  background: var(--color-danger);
 }
 
 .btn-primary {
-  padding: 8px 20px;
-  background: var(--color-primary, #4a90d9);
-  color: white;
-  border: none;
-  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 16px;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
   white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
 }
 
 .btn-primary:disabled {
@@ -434,20 +453,19 @@ onMounted(() => {
 .test-result {
   margin-top: 12px;
   padding: 10px 14px;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   font-size: 13px;
+  line-height: 1.5;
 }
 
 .result-ok {
-  background: #e8f8ef;
-  color: #27ae60;
-  border: 1px solid #27ae60;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .result-err {
-  background: #fde8e8;
-  color: #c0392b;
-  border: 1px solid #e74c3c;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .theme-options {
@@ -462,19 +480,20 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: 16px 12px;
-  border: 2px solid var(--color-border, #e0e0e0);
-  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition-fast);
 }
 
 .theme-option:hover {
-  border-color: var(--color-primary, #4a90d9);
+  border-color: var(--color-border-strong);
+  background: var(--color-bg-hover);
 }
 
 .theme-option.active {
-  border-color: var(--color-primary, #4a90d9);
-  background: var(--color-bg-secondary, #f0f7ff);
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 .sr-only {
@@ -492,6 +511,7 @@ onMounted(() => {
 .theme-label {
   font-size: 13px;
   font-weight: 500;
+  color: var(--color-text-secondary);
 }
 
 .card-wide {
@@ -512,22 +532,27 @@ onMounted(() => {
 
 .form-label {
   font-size: 13px;
-  color: var(--color-text-secondary, #666);
+  font-weight: 500;
+  color: var(--color-text-secondary);
 }
 
 .form-input {
-  padding: 8px 10px;
-  border: 1px solid var(--color-border, #e0e0e0);
-  border-radius: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   font-size: 14px;
-  background: var(--color-bg-card, #fff);
-  color: var(--color-text, #333);
+  color: var(--color-text);
+  background: var(--color-bg-card);
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color var(--transition-fast);
 }
 
 .form-input:focus {
-  border-color: var(--color-primary, #4a90d9);
+  border-color: var(--color-primary);
+}
+
+.form-input::placeholder {
+  color: var(--color-text-muted);
 }
 
 .btn-group {
@@ -537,14 +562,23 @@ onMounted(() => {
 }
 
 .btn-secondary {
-  padding: 8px 20px;
-  background: var(--color-bg-secondary, #f0f7ff);
-  color: var(--color-text, #333);
-  border: 1px solid var(--color-border, #e0e0e0);
-  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 16px;
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
   white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border-strong);
 }
 
 .btn-secondary:disabled {
@@ -563,6 +597,10 @@ onMounted(() => {
 
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .theme-options {
+    flex-direction: column;
   }
 }
 </style>

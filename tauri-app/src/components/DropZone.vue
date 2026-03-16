@@ -58,23 +58,24 @@ function onFileChange(e: Event) {
 
 <style scoped>
 .dropzone {
-  border: 2px dashed #b7c9c1;
-  border-radius: 12px;
+  border: 2px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
   padding: 40px 24px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-base);
+  color: var(--color-text-secondary);
 }
 
 .dropzone:hover,
 .dropzone.active {
-  border-color: #2d6a4f;
-  background: rgba(45, 106, 79, 0.04);
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 .hint {
   margin-top: 8px;
   font-size: 13px;
-  color: #7a9a8e;
+  color: var(--color-text-muted);
 }
 </style>

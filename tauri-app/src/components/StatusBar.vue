@@ -89,23 +89,31 @@ const llmClass = computed(() => {
 
 <style scoped>
 .bar {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  padding: 18px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  padding: 14px 16px;
+}
+
+.bar > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .label {
-  margin: 0 0 6px;
+  margin: 0;
   font-size: 12px;
+  font-weight: 500;
   color: var(--color-text-muted);
-  padding-left: 10px;
+  white-space: nowrap;
 }
 
 .hint {
-  margin: 6px 0 0;
+  margin: 0;
   font-size: 11px;
-  color: var(--color-text-muted, #999);
+  color: var(--color-text-muted);
   word-break: break-all;
   line-height: 1.3;
 }
@@ -116,18 +124,6 @@ const llmClass = computed(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 12px;
-  padding: 4px 10px;
-}
-
-@media (max-width: 900px) {
-  .bar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
-  .bar {
-    grid-template-columns: 1fr;
-  }
+  padding: 3px 10px;
 }
 </style>

@@ -36,48 +36,54 @@ const pendingCount = computed(() => pending.value.length);
 <style scoped>
 .shell {
   display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 20px;
-  padding: 20px;
+  grid-template-columns: 240px 1fr;
+  gap: 0;
   min-height: 100vh;
+  background: var(--color-bg);
 }
 
 .content {
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: 20px;
+  gap: 0;
 }
 
 .hero {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 16px;
-  padding: 28px;
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
 }
 
 .eyebrow {
   margin: 0;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-primary);
+  color: var(--color-text-muted);
 }
 
 h1 {
-  margin: 8px 0 10px;
-  font-size: 38px;
-  line-height: 1;
+  margin: 4px 0 0;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
   color: var(--color-text);
 }
 
 .subtitle {
-  margin: 0;
-  max-width: 520px;
-  color: var(--color-text-secondary);
+  display: none;
 }
 
 .page {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 32px;
   min-height: 0;
 }
 
@@ -98,6 +104,7 @@ h1 {
 
   .hero {
     flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

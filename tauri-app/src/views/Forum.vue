@@ -187,31 +187,35 @@ function statusLabel(status: string): string {
 
 <style scoped>
 .page {
-  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .page-header h2 {
   margin: 0;
+  font-size: 20px;
+  font-weight: 600;
 }
 
 .subtitle {
-  color: var(--color-text-secondary, #666);
+  color: var(--color-text-secondary);
   margin: 4px 0 0;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .card {
-  background: var(--color-bg-card, #fff);
-  border: 1px solid var(--color-border, #e0e0e0);
-  border-radius: 10px;
-  padding: 20px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
 }
 
 .start-panel h3 {
   margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .start-form {
@@ -222,22 +226,38 @@ function statusLabel(status: string): string {
 
 .select-conversation {
   flex: 1;
-  padding: 8px 12px;
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   font-size: 14px;
-  background: var(--color-bg, #fff);
+  color: var(--color-text);
+  background: var(--color-bg-card);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.select-conversation:focus {
+  border-color: var(--color-primary);
 }
 
 .btn-primary {
-  padding: 8px 20px;
-  background: var(--color-primary, #4a90d9);
-  color: white;
-  border: none;
-  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 16px;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
   white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
 }
 
 .btn-primary:disabled {
@@ -246,18 +266,28 @@ function statusLabel(status: string): string {
 }
 
 .btn-secondary {
-  padding: 6px 14px;
-  background: transparent;
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 14px;
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   cursor: pointer;
   font-size: 13px;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border-strong);
 }
 
 .error-banner {
-  background: #fde8e8;
-  border-color: #e74c3c;
-  color: #c0392b;
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
 }
 
 .panel-header {
@@ -269,37 +299,39 @@ function statusLabel(status: string): string {
 
 .panel-header h3 {
   margin: 0;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .loading,
 .empty {
   text-align: center;
   padding: 24px;
-  color: var(--color-text-secondary, #888);
+  color: var(--color-text-muted);
   font-size: 14px;
 }
 
 .session-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .session-item {
   padding: 12px;
-  border: 1px solid var(--color-border, #eee);
-  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all var(--transition-fast);
 }
 
 .session-item:hover {
-  background: var(--color-bg-secondary, #f8f8f8);
+  background: var(--color-bg-hover);
 }
 
 .session-item.active {
-  border-color: var(--color-primary, #4a90d9);
-  background: #f3f8fd;
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 .session-info {
@@ -310,81 +342,88 @@ function statusLabel(status: string): string {
 }
 
 .session-id {
-  font-family: monospace;
+  font-family: "SF Mono", "Fira Code", monospace;
   font-size: 13px;
-  color: var(--color-text, #333);
+  color: var(--color-text);
 }
 
 .session-meta {
   font-size: 12px;
-  color: var(--color-text-secondary, #888);
+  color: var(--color-text-muted);
 }
 
 .status-badge {
-  padding: 2px 10px;
-  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .status-running {
-  background: #e8f4fd;
-  color: #2980b9;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .status-completed {
-  background: #e8f8f0;
-  color: #27ae60;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .status-failed {
-  background: #fde8e8;
-  color: #c0392b;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .summary-box {
   margin-bottom: 20px;
   padding: 16px;
-  background: var(--color-bg-secondary, #f8f8f8);
-  border-radius: 8px;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
 }
 
 .summary-box h4 {
   margin: 0 0 8px;
   font-size: 14px;
+  font-weight: 600;
 }
 
 .summary-box p {
   margin: 0;
+  font-size: 14px;
   line-height: 1.6;
   white-space: pre-wrap;
+  color: var(--color-text-secondary);
 }
 
 .debate-progress {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 20px;
-  background: var(--color-info-bg, #e8f4fd);
-  border: 1px solid var(--color-info, #4a90d9);
-  border-radius: 8px;
-  font-size: 14px;
+  padding: 16px;
+  background: var(--color-info-bg);
+  border-radius: var(--radius-md);
+  font-size: 13px;
   font-weight: 500;
-  color: var(--color-info, #2980b9);
+  color: var(--color-info);
 }
 
 .spinner {
   display: inline-block;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border: 2px solid currentColor;
   border-right-color: transparent;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   animation: spin 0.8s linear infinite;
   flex-shrink: 0;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

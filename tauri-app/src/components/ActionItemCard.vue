@@ -36,33 +36,128 @@ defineEmits<{
 
 <style scoped>
 .action-card {
-  border: 1px solid var(--color-border, #e0e0e0);
-  border-left: 4px solid #ccc;
-  border-radius: 8px;
-  padding: 14px;
-  background: var(--color-bg-card, #fff);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  background: var(--color-bg-card);
 }
-.priority-high { border-left-color: #e74c3c; }
-.priority-medium { border-left-color: #f39c12; }
-.priority-low { border-left-color: #27ae60; }
 
-.card-header { display: flex; gap: 6px; margin-bottom: 8px; }
-.category-tag, .priority-tag {
-  padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 500;
+.priority-high {
+  border-left-color: var(--color-danger);
 }
-.category-tag { background: #e8f4fd; color: #2980b9; }
-.p-high { background: #fde8e8; color: #e74c3c; }
-.p-medium { background: #fef3e2; color: #e67e22; }
-.p-low { background: #e8f8ef; color: #27ae60; }
 
-.card-title { margin: 0 0 6px; font-size: 15px; }
-.card-desc { margin: 0 0 8px; font-size: 13px; color: var(--color-text-secondary, #666); line-height: 1.5; }
-.due-date { font-size: 12px; color: #e67e22; margin-bottom: 8px; }
+.priority-medium {
+  border-left-color: var(--color-warning);
+}
 
-.card-actions { display: flex; gap: 8px; align-items: center; }
-.btn-sm { padding: 4px 12px; border-radius: 5px; font-size: 12px; cursor: pointer; border: none; }
-.btn-complete { background: #27ae60; color: white; }
-.btn-dismiss { background: transparent; border: 1px solid #ddd; color: #666; }
-.done-badge { font-size: 12px; color: #27ae60; }
-.dismissed-badge { font-size: 12px; color: #999; }
+.priority-low {
+  border-left-color: var(--color-success);
+}
+
+.card-header {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.category-tag,
+.priority-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.category-tag {
+  color: var(--color-info);
+  background: var(--color-info-bg);
+}
+
+.p-high {
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+.p-medium {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+.p-low {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.card-title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  color: var(--color-text);
+}
+
+.card-desc {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.due-date {
+  font-size: 12px;
+  color: var(--color-warning);
+  margin-bottom: 8px;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all var(--transition-fast);
+}
+
+.btn-complete {
+  background: var(--color-success);
+  color: var(--color-text-inverse);
+}
+
+.btn-complete:hover {
+  opacity: 0.9;
+}
+
+.btn-dismiss {
+  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.btn-dismiss:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text);
+}
+
+.done-badge {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-success);
+}
+
+.dismissed-badge {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
 </style>

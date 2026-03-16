@@ -119,9 +119,9 @@ onUnmounted(() => {
   right: 8px;
   width: 200px;
   padding: 10px;
-  background: rgba(20, 20, 40, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  background: rgba(15, 17, 23, 0.92);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   backdrop-filter: blur(8px);
   z-index: 10;
   display: flex;
@@ -137,29 +137,31 @@ onUnmounted(() => {
 
 .filter-label {
   font-size: 11px;
-  color: #888;
+  color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
+  font-weight: 500;
 }
 
 .search-input {
   width: 100%;
   padding: 6px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #e0e0e0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
   font-size: 13px;
   outline: none;
   box-sizing: border-box;
+  transition: border-color var(--transition-fast);
 }
 
 .search-input::placeholder {
-  color: #666;
+  color: var(--color-text-muted);
 }
 
 .search-input:focus {
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: var(--color-primary);
 }
 
 .type-chips {
@@ -171,11 +173,12 @@ onUnmounted(() => {
 .type-chip {
   padding: 2px 8px;
   font-size: 11px;
+  font-weight: 500;
   border: 1px solid;
-  border-radius: 12px;
+  border-radius: var(--radius-full);
   cursor: pointer;
   background: transparent;
-  transition: all 0.15s ease;
+  transition: all var(--transition-fast);
 }
 
 .type-chip:hover {
@@ -187,11 +190,11 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #aaa;
+  color: var(--color-text-muted);
   cursor: pointer;
 }
 
 .orphan-toggle input {
-  accent-color: #2d6a4f;
+  accent-color: var(--color-primary);
 }
 </style>

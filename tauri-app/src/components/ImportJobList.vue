@@ -53,14 +53,16 @@ function statusLabel(status: string): string {
 
 .file-name {
   font-weight: 600;
+  color: var(--color-text);
 }
 
 .format {
   font-size: 12px;
-  color: #7a9a8e;
-  background: rgba(45, 106, 79, 0.08);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-tertiary);
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .job-status {
@@ -71,38 +73,38 @@ function statusLabel(status: string): string {
 
 .pill {
   font-size: 12px;
-  padding: 2px 10px;
-  border-radius: 10px;
-  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
 }
 
 .pill.succeeded {
-  background: #d4edda;
-  color: #155724;
+  color: var(--color-success);
+  background: var(--color-success-bg);
 }
 
 .pill.running {
-  background: #fff3cd;
-  color: #856404;
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
 }
 
 .pill.failed {
-  background: #f8d7da;
-  color: #721c24;
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
 }
 
 .pill.pending {
-  background: #e2e8f0;
-  color: #4a5568;
+  color: var(--color-text-secondary);
+  background: var(--color-muted-bg);
 }
 
 .count {
   font-size: 13px;
-  color: #48625c;
+  color: var(--color-text-secondary);
 }
 
 .empty {
-  color: #7a9a8e;
+  color: var(--color-text-muted);
   text-align: center;
   padding: 20px;
 }

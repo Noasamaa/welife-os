@@ -39,53 +39,73 @@ const items = [
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 24px;
+  padding: 16px 12px;
+  background: var(--color-bg-secondary);
+  border-right: 1px solid var(--color-border);
 }
 
 .label {
-  margin: 0 0 16px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  margin: 0 0 12px;
+  padding: 0 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-text-label);
 }
 
 nav {
   display: grid;
-  gap: 10px;
+  gap: 2px;
 }
 
 .nav-item {
   display: grid;
-  gap: 4px;
-  padding: 14px 16px;
-  border-radius: 16px;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
   color: var(--color-nav-text);
-  transition: transform 160ms ease, background 160ms ease;
+  position: relative;
+  transition: background var(--transition-fast) ease;
 }
 
 .nav-item.router-link-exact-active {
-  background: var(--color-primary-bg);
+  background: var(--color-nav-active-bg);
+  color: var(--color-nav-active);
+}
+
+.nav-item.router-link-exact-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: var(--radius-full);
+  background: var(--color-nav-active);
 }
 
 .nav-item:hover {
-  background: var(--color-primary-bg-hover);
-  transform: translateX(2px);
+  background: var(--color-bg-hover);
 }
 
 small {
+  font-size: 11px;
   color: var(--color-text-muted);
 }
 
 .footnote {
-  padding-top: 24px;
+  padding-top: 16px;
   border-top: 1px solid var(--color-border);
 }
 
 .footnote p {
-  margin: 0 0 8px;
-  font-weight: 700;
-  color: var(--color-text);
+  margin: 0;
+  padding: 0 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
 }
 </style>

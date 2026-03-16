@@ -159,7 +159,7 @@ const llmClass = computed(() => {
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
+  gap: 16px;
 }
 
 .block {
@@ -168,16 +168,22 @@ const llmClass = computed(() => {
 
 h2 {
   margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--color-text);
 }
 
 p {
+  margin: 0;
+  font-size: 13px;
   color: var(--color-text-secondary);
 }
 
 ul {
   color: var(--color-text-secondary);
   padding-left: 20px;
+  margin: 0;
+  font-size: 13px;
 }
 
 li {
@@ -187,12 +193,13 @@ li {
 .card-header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 
 .card-description {
   margin: 0 0 16px;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--color-text-muted);
 }
 
@@ -200,13 +207,13 @@ li {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  height: 22px;
+  min-width: 20px;
+  height: 20px;
   padding: 0 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   font-size: 12px;
-  font-weight: 700;
-  color: var(--color-bg-card-solid);
+  font-weight: 600;
+  color: var(--color-text-inverse);
   background: var(--color-primary);
 }
 
@@ -215,9 +222,10 @@ li {
 }
 
 .status-list {
-  display: grid;
-  gap: 12px;
-  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .status-row {
@@ -225,12 +233,14 @@ li {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  font-size: 13px;
   color: var(--color-text-secondary);
 }
 
 .action-summary {
-  display: grid;
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .summary-row {
@@ -238,18 +248,19 @@ li {
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  border-radius: 10px;
-  background: var(--color-muted-bg);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
 }
 
 .summary-label {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--color-text-secondary);
 }
 
 .summary-value {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
+  color: var(--color-text);
 }
 
 .pending-text {
@@ -273,7 +284,7 @@ li {
   align-items: baseline;
   gap: 8px;
   padding: 12px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--color-warning-bg);
 }
 
@@ -284,19 +295,19 @@ li {
 }
 
 .count-label {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--color-text-secondary);
 }
 
 .reminder-empty {
   padding: 12px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--color-muted-bg);
-  font-size: 14px;
+  font-size: 13px;
   color: var(--color-text-muted);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .grid {
     grid-template-columns: 1fr;
   }
