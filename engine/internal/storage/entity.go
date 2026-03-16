@@ -69,7 +69,7 @@ func (s *Store) GetEntity(ctx context.Context, id string) (Entity, error) {
 		Scan(&e.ID, &e.Type, &e.Name, &e.Properties, &e.SourceConversation)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return Entity{}, fmt.Errorf("entity %s not found", id)
+			return Entity{}, fmt.Errorf("entity %s: %w", id, ErrNotFound)
 		}
 		return Entity{}, err
 	}

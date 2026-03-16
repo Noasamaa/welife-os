@@ -76,14 +76,15 @@ func loadConfig() (server.Config, error) {
 	}
 
 	return server.Config{
-		Host:         lookupString("WELIFE_HOST", "127.0.0.1"),
-		Port:         port,
-		DatabasePath: dbPath,
-		DatabaseKey:  dbKey,
-		LLMProvider:  lookupString("WELIFE_LLM_PROVIDER", "ollama"),
-		LLMBaseURL:   lookupString("WELIFE_OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
-		LLMModel:     lookupString("WELIFE_OLLAMA_MODEL", "qwen3.5:9b"),
-		LLMAPIKey:    lookupString("WELIFE_LLM_API_KEY", ""),
+		Host:           lookupString("WELIFE_HOST", "127.0.0.1"),
+		Port:           port,
+		DatabasePath:   dbPath,
+		DatabaseKey:    dbKey,
+		LLMProvider:    lookupString("WELIFE_LLM_PROVIDER", "ollama"),
+		LLMBaseURL:     lookupString("WELIFE_OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
+		LLMModel:       lookupString("WELIFE_OLLAMA_MODEL", "qwen3.5:9b"),
+		LLMAPIKey:      lookupString("WELIFE_LLM_API_KEY", ""),
+		AllowedOrigins: lookupStringSlice("WELIFE_CORS_ORIGINS"),
 	}, nil
 }
 
@@ -133,4 +134,19 @@ func lookupInt(key string, fallback int) (int, error) {
 		return parsed, nil
 	}
 	return fallback, nil
+}
+
+func lookupStringSlice(key string) []string {
+	value, ok := os.LookupEnv(key)
+	if !ok || value == "" {
+		return nil
+	}
+	var result []string
+	for _, s := range strings.Split(value, ",") {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			result = append(result, s)
+		}
+	}
+	return result
 }

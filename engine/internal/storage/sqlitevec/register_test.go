@@ -7,11 +7,14 @@ import (
 	"testing"
 
 	_ "github.com/mutecomm/go-sqlcipher/v4"
-	_ "github.com/welife-os/welife-os/engine/internal/storage/sqlitevec"
+	"github.com/welife-os/welife-os/engine/internal/storage/sqlitevec"
 )
 
 func openTestDB(t *testing.T) *sql.DB {
 	t.Helper()
+	if err := sqlitevec.Init(); err != nil {
+		t.Fatalf("sqlitevec.Init: %v", err)
+	}
 	dsn := filepath.Join(t.TempDir(), "test.db") + "?_pragma_key=testkey&_pragma_foreign_keys=ON"
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {

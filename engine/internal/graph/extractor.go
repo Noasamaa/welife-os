@@ -92,6 +92,9 @@ func (e *Extractor) Extract(ctx context.Context, messages []MessageSnippet) (Ext
 	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
 		return ExtractionResult{}, fmt.Errorf("parsing extraction result: %w", err)
 	}
+	if len(result.Entities) == 0 {
+		return ExtractionResult{}, nil
+	}
 
 	return result, nil
 }

@@ -34,6 +34,7 @@ type Config struct {
 	LLMModel       string
 	LLMAPIKey      string
 	EmbeddingModel string
+	AllowedOrigins []string
 }
 
 func (c Config) Addr() string {
@@ -75,7 +76,7 @@ func New(cfg Config) (*Server, error) {
 		_ = store.Close()
 		return nil, err
 	}
-	llmClient := llm.NewSwappable(rawClient)
+	llmClient := llm.NewSwappable(rawClient, 0)
 
 	server := &Server{
 		config:      cfg,

@@ -161,9 +161,13 @@ watch(
   },
 );
 
-watch(selectedConversation, (conversationID) => {
+watch(selectedConversation, (conversationID, oldConversationID) => {
   stopProfilePolling();
-  stopSessionPolling();
+  // Stop session polling only if the conversation actually changed
+  // (the running session belongs to the old conversation)
+  if (oldConversationID && oldConversationID !== conversationID) {
+    stopSessionPolling();
+  }
   profileStatus.value = "";
   void Promise.all([
     loadProfiles(conversationID),
@@ -190,8 +194,8 @@ function statusLabel(s: string): string {
   return m[s] ?? s;
 }
 
-function parseJson(s: string): any {
-  try { return JSON.parse(s); } catch { return {}; }
+function parseJson(s: string): Record<string, unknown> {
+  try { return JSON.parse(s) as Record<string, unknown>; } catch { return {}; }
 }
 
 function startProfilePolling() {

@@ -123,6 +123,9 @@ func (a *CoachAgent) Analyze(ctx context.Context, input AnalysisInput) (Analysis
 	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
 		return AnalysisOutput{}, fmt.Errorf("parsing coach response: %w", err)
 	}
+	if len(result.ActionItems) == 0 {
+		return AnalysisOutput{AgentName: coachAgentName, Summary: result.Summary}, nil
+	}
 
 	var findings []Finding
 	for _, item := range result.ActionItems {
@@ -178,6 +181,9 @@ func (a *CoachAgent) GenerateActionPlan(ctx context.Context, sessionID string) (
 	var result coachLLMResponse
 	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
 		return nil, fmt.Errorf("parsing action plan response: %w", err)
+	}
+	if len(result.ActionItems) == 0 {
+		return nil, nil
 	}
 
 	var items []storage.ActionItem

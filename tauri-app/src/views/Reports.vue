@@ -148,35 +148,30 @@ onUnmounted(() => {
 });
 
 watch(
-  () => currentReport.value?.status,
-  (status) => {
+  () => ({
+    currentStatus: currentReport.value?.status,
+    hasRunning: reports.value.some((r) => r.status === "running"),
+  }),
+  ({ currentStatus, hasRunning }) => {
     stopPolling();
-    if (status !== "running" || !currentReport.value) {
-      return;
-    }
+    const needsPolling = currentStatus === "running" || hasRunning;
+    if (!needsPolling) return;
+
     pollHandle = setInterval(() => {
-      if (!currentReport.value) {
-        stopPolling();
-        return;
+      void loadReports();
+      if (currentReport.value) {
+        void loadReport(currentReport.value.id);
       }
-      void Promise.all([loadReports(), loadReport(currentReport.value.id)]);
+      // Stop if nothing is running anymore
+      if (
+        currentReport.value?.status !== "running" &&
+        !reports.value.some((r) => r.status === "running")
+      ) {
+        stopPolling();
+      }
     }, 2000);
   },
-);
-
-// Also poll when any report in the list is running (even if no report is selected)
-watch(
-  () => reports.value.some((r) => r.status === "running"),
-  (hasRunning) => {
-    if (hasRunning && !pollHandle && !currentReport.value) {
-      pollHandle = setInterval(() => {
-        void loadReports();
-        if (!reports.value.some((r) => r.status === "running")) {
-          stopPolling();
-        }
-      }, 3000);
-    }
-  },
+  { deep: true },
 );
 
 async function loadConversations() {

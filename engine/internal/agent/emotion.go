@@ -135,6 +135,9 @@ func (a *EmotionAgent) analyzeContactMessages(ctx context.Context, contact strin
 	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
 		return emotionLLMResponse{}, fmt.Errorf("parsing emotion response: %w", err)
 	}
+	if result.Summary == "" && len(result.EmotionTimeline) == 0 {
+		return emotionLLMResponse{}, fmt.Errorf("emotion analysis returned empty result for contact %q", contact)
+	}
 
 	return result, nil
 }

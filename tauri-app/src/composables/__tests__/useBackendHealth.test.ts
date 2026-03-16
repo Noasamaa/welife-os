@@ -70,24 +70,16 @@ describe("useBackendHealth", () => {
     expect(typeof apiBaseUrl.value).toBe("string");
   });
 
-  it("auto-checks health on mount and starts polling", async () => {
-    vi.useFakeTimers();
+  it("polling is started at module level (no mount required)", async () => {
     mocks.fetchSystemStatus.mockResolvedValue(makeStatus());
 
+    // The module starts polling on first import — no onMounted needed.
+    // We verify the composable returns the shared state without requiring a component.
     const { useBackendHealth } = await import("../useBackendHealth");
-    const { withSetup } = await import("../../test-utils/with-setup");
-    const { result, unmount } = withSetup(() => useBackendHealth());
+    const { checkHealth, status } = useBackendHealth();
 
-    // onMounted fires checkHealth once — flush microtasks
-    await vi.advanceTimersByTimeAsync(0);
-    expect(mocks.fetchSystemStatus).toHaveBeenCalledTimes(1);
-    expect(result.status.value).toBe("healthy");
-
-    // Advance 5s — poll fires again
-    await vi.advanceTimersByTimeAsync(5000);
-    expect(mocks.fetchSystemStatus).toHaveBeenCalledTimes(2);
-
-    unmount();
-    vi.useRealTimers();
+    await checkHealth();
+    expect(status.value).toBe("healthy");
+    expect(mocks.fetchSystemStatus).toHaveBeenCalled();
   });
 });

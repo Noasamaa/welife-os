@@ -10,7 +10,7 @@ import (
 	"time"
 
 	_ "github.com/mutecomm/go-sqlcipher/v4"
-	_ "github.com/welife-os/welife-os/engine/internal/storage/sqlitevec"
+	"github.com/welife-os/welife-os/engine/internal/storage/sqlitevec"
 )
 
 type Config struct {
@@ -29,6 +29,10 @@ func Open(ctx context.Context, cfg Config) (*Store, error) {
 	}
 	if cfg.Key == "" {
 		return nil, fmt.Errorf("database key is required")
+	}
+
+	if err := sqlitevec.Init(); err != nil {
+		return nil, fmt.Errorf("initializing sqlite-vec: %w", err)
 	}
 
 	absPath, err := filepath.Abs(cfg.Path)

@@ -42,11 +42,11 @@ Tauri v2 桌面壳 (Rust)
 | `report` | `internal/report/` | ReACT 报告生成 + 检索工具 + PDF/HTML 渲染 |
 | `simulation` | `internal/simulation/` | 平行人生模拟 (ProfileBuilder + 多步 Engine) |
 | `reminder` | `internal/reminder/` | 提醒系统 (Checker + Scheduler + Service) |
-| `storage` | `internal/storage/` | SQLCipher 数据层 (Schema v5, 12 张表) |
+| `storage` | `internal/storage/` | SQLCipher 数据层 (Schema v8, 19 张表) |
 | `llm` | `internal/llm/` | Ollama 客户端 + JSON 提取工具 |
 | `task` | `internal/task/` | 异步任务管理器 (goroutine pool) |
 
-## 数据库 Schema (v5)
+## 数据库 Schema (v8)
 
 | 表 | Phase | 用途 |
 |---|---|---|
@@ -66,6 +66,9 @@ Tauri v2 桌面壳 (Rust)
 | `person_profiles` | 4 | 数字分身画像 |
 | `simulation_sessions` | 4 | 模拟会话 |
 | `simulation_steps` | 4 | 模拟步骤 |
+| `system_settings` | 5 | 系统设置键值对 |
+| `vec_messages` | 6 | 消息向量索引 |
+| `vec_messages_data` | 6 | 消息向量数据 |
 
 ## API 端点
 

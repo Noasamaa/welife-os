@@ -104,6 +104,7 @@ async function handleGenerate() {
   const result = await generate(selectedSession.value);
   if (!result) return;
   generationMessage.value = `已生成 ${result.count} 条行动项。`;
+  window.setTimeout(() => { generationMessage.value = ""; }, 3000);
   await Promise.all([reload(), loadForumSessions()]);
 }
 </script>

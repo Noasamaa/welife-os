@@ -88,7 +88,7 @@ func (s *Store) GetPersonProfile(ctx context.Context, entityID string) (PersonPr
 			&p.RelationshipToSelf, &p.BehavioralPatterns,
 			&p.SourceConversationIDs, &p.CreatedAt, &p.UpdatedAt)
 	if err == sql.ErrNoRows {
-		return p, fmt.Errorf("person profile for entity %q not found", entityID)
+		return p, fmt.Errorf("person profile for entity %q: %w", entityID, ErrNotFound)
 	}
 	return p, err
 }
@@ -133,7 +133,7 @@ func (s *Store) GetSimulationSession(ctx context.Context, id string) (Simulation
 			&sess.StepCount, &sess.OriginalGraphSnapshot, &sess.FinalGraphSnapshot,
 			&sess.Narrative, &sess.CreatedAt, &sess.CompletedAt)
 	if err == sql.ErrNoRows {
-		return sess, fmt.Errorf("simulation session %q not found", id)
+		return sess, fmt.Errorf("simulation session %q: %w", id, ErrNotFound)
 	}
 	return sess, err
 }

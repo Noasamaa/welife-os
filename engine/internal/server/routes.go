@@ -3,12 +3,14 @@ package server
 import (
 	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/welife-os/welife-os/engine/internal/storage"
 )
 
 type healthResponse struct {
@@ -42,7 +44,7 @@ type llmStatus struct {
 
 func (s *Server) routes() http.Handler {
 	router := chi.NewRouter()
-	router.Use(devCORSMiddleware)
+	router.Use(corsMiddleware(s.config.AllowedOrigins))
 	router.Get("/health", s.handleHealth)
 	router.Route("/api/v1", func(api chi.Router) {
 		api.Use(apiAuthMiddleware)
@@ -113,7 +115,7 @@ func (s *Server) routes() http.Handler {
 	return router
 }
 
-var allowedOrigins = map[string]struct{}{
+var defaultAllowedOrigins = map[string]struct{}{
 	"http://localhost:1420":   {},
 	"http://127.0.0.1:1420":   {},
 	"tauri://localhost":       {},
@@ -121,23 +123,33 @@ var allowedOrigins = map[string]struct{}{
 	"https://tauri.localhost": {},
 }
 
-func devCORSMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := strings.TrimSpace(r.Header.Get("Origin"))
-		if _, ok := allowedOrigins[origin]; ok {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Vary", "Origin")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-WeLife-API-Token")
-		}
+func corsMiddleware(extraOrigins []string) func(http.Handler) http.Handler {
+	origins := make(map[string]struct{}, len(defaultAllowedOrigins)+len(extraOrigins))
+	for k, v := range defaultAllowedOrigins {
+		origins[k] = v
+	}
+	for _, o := range extraOrigins {
+		origins[o] = struct{}{}
+	}
 
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := strings.TrimSpace(r.Header.Get("Origin"))
+			if _, ok := origins[origin]; ok {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Vary", "Origin")
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-WeLife-API-Token")
+			}
 
-		next.ServeHTTP(w, r)
-	})
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 const apiTokenHeader = "X-WeLife-API-Token"
@@ -197,12 +209,12 @@ func writeJSON(w http.ResponseWriter, statusCode int, payload any) {
 }
 
 // writeResourceError logs the real error server-side and returns a safe
-// HTTP response. If the error message contains "not found" it maps to 404;
+// HTTP response. If the error wraps storage.ErrNotFound it maps to 404;
 // otherwise it maps to 500.
 func writeResourceError(w http.ResponseWriter, handler string, err error, fallbackMsg string) {
 	status := http.StatusInternalServerError
 	msg := fallbackMsg
-	if strings.Contains(err.Error(), "not found") {
+	if errors.Is(err, storage.ErrNotFound) {
 		status = http.StatusNotFound
 		msg = "resource not found"
 	}

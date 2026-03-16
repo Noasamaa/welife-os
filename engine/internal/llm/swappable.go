@@ -6,9 +6,8 @@ import (
 	"sync"
 )
 
-// maxConcurrentLLMCalls limits the number of concurrent LLM requests to
-// prevent overloading the upstream provider.
-const maxConcurrentLLMCalls = 8
+// DefaultMaxConcurrentLLMCalls is the default concurrency limit for LLM calls.
+const DefaultMaxConcurrentLLMCalls = 8
 
 // SwappableClient wraps an LLMClient with a read-write mutex, allowing the
 // underlying client to be hot-swapped at runtime while all existing callers
@@ -21,10 +20,14 @@ type SwappableClient struct {
 }
 
 // NewSwappable creates a new SwappableClient wrapping the given initial client.
-func NewSwappable(initial LLMClient) *SwappableClient {
+// maxConcurrent controls the concurrency limit; if <= 0, DefaultMaxConcurrentLLMCalls is used.
+func NewSwappable(initial LLMClient, maxConcurrent int) *SwappableClient {
+	if maxConcurrent <= 0 {
+		maxConcurrent = DefaultMaxConcurrentLLMCalls
+	}
 	return &SwappableClient{
 		inner: initial,
-		sem:   make(chan struct{}, maxConcurrentLLMCalls),
+		sem:   make(chan struct{}, maxConcurrent),
 	}
 }
 

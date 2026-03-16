@@ -87,7 +87,7 @@ func (s *Store) GetReminderRule(ctx context.Context, id string) (ReminderRule, e
 			&r.ThresholdDays, &r.CronExpr, &r.MessageTemplate,
 			&enabled, &r.LastTriggeredAt, &r.CreatedAt)
 	if err == sql.ErrNoRows {
-		return r, fmt.Errorf("reminder rule %q not found", id)
+		return r, fmt.Errorf("reminder rule %q: %w", id, ErrNotFound)
 	}
 	r.Enabled = enabled != 0
 	return r, err
@@ -109,7 +109,7 @@ func (s *Store) UpdateReminderRule(ctx context.Context, id string, enabled bool)
 		return err
 	}
 	if rows == 0 {
-		return fmt.Errorf("reminder rule %q not found", id)
+		return fmt.Errorf("reminder rule %q: %w", id, ErrNotFound)
 	}
 	return nil
 }
@@ -132,7 +132,7 @@ func (s *Store) DeleteReminderRule(ctx context.Context, id string) error {
 		return err
 	}
 	if rows == 0 {
-		return fmt.Errorf("reminder rule %q not found", id)
+		return fmt.Errorf("reminder rule %q: %w", id, ErrNotFound)
 	}
 	return nil
 }
@@ -181,7 +181,7 @@ func (s *Store) MarkReminderRead(ctx context.Context, id string) error {
 		return err
 	}
 	if rows == 0 {
-		return fmt.Errorf("reminder %q not found", id)
+		return fmt.Errorf("reminder %q: %w", id, ErrNotFound)
 	}
 	return nil
 }
@@ -198,7 +198,7 @@ func (s *Store) DismissReminder(ctx context.Context, id string) error {
 		return err
 	}
 	if rows == 0 {
-		return fmt.Errorf("reminder %q not found", id)
+		return fmt.Errorf("reminder %q: %w", id, ErrNotFound)
 	}
 	return nil
 }
@@ -226,7 +226,7 @@ func (s *Store) GetActionItemDueDate(ctx context.Context, id string) (string, er
 		SELECT due_date FROM action_items WHERE id = ?`, id).
 		Scan(&dueDate)
 	if err == sql.ErrNoRows {
-		return "", fmt.Errorf("action item %q not found", id)
+		return "", fmt.Errorf("action item %q: %w", id, ErrNotFound)
 	}
 	if err != nil {
 		return "", err
