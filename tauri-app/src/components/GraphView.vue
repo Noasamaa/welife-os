@@ -11,7 +11,7 @@
           <span class="stat">{{ overview.stats.entity_count }} 个实体</span>
           <span class="stat">{{ overview.stats.relationship_count }} 条关系</span>
           <span v-for="(count, type) in overview.stats.entity_types" :key="type" class="tag">
-            {{ type }}: {{ count }}
+            {{ entityTypeLabel(type as string) }}: {{ count }}
           </span>
         </div>
         <div class="controls">
@@ -69,6 +69,18 @@ const selectedNodeName = computed(() => {
   const node = props.overview.nodes.find((n) => n.id === nodeId);
   return node?.name ?? nodeId;
 });
+
+const ENTITY_TYPE_LABELS: Record<string, string> = {
+  person: "人物",
+  event: "事件",
+  topic: "话题",
+  promise: "承诺",
+  place: "地点",
+};
+
+function entityTypeLabel(type: string): string {
+  return ENTITY_TYPE_LABELS[type] ?? type;
+}
 
 watch(
   () => props.overview,
