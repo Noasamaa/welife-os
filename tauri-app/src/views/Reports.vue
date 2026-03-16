@@ -108,9 +108,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import { useReport } from "../composables/useReport";
-import { fetchConversations, fetchReportExportBlob } from "../services/api";
+import { fetchConversations, fetchReportExportBlob, pollTaskUntilDone } from "../services/api";
 import type { Conversation } from "../types/import";
 import type { ReportType } from "../types/report";
 import ReportViewer from "../components/ReportViewer.vue";
@@ -131,7 +131,7 @@ const {
 const conversations = ref<Conversation[]>([]);
 const selectedConversation = ref("");
 const selectedType = ref<ReportType>("weekly");
-let pollHandle: ReturnType<typeof setInterval> | null = null;
+let cancelPoll: (() => void) | null = null;
 
 const reportTypes = [
   { value: "weekly" as ReportType, label: "每周简报" },
@@ -144,35 +144,8 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  stopPolling();
+  cancelPoll?.();
 });
-
-watch(
-  () => ({
-    currentStatus: currentReport.value?.status,
-    hasRunning: reports.value.some((r) => r.status === "running"),
-  }),
-  ({ currentStatus, hasRunning }) => {
-    stopPolling();
-    const needsPolling = currentStatus === "running" || hasRunning;
-    if (!needsPolling) return;
-
-    pollHandle = setInterval(() => {
-      void loadReports();
-      if (currentReport.value) {
-        void loadReport(currentReport.value.id);
-      }
-      // Stop if nothing is running anymore
-      if (
-        currentReport.value?.status !== "running" &&
-        !reports.value.some((r) => r.status === "running")
-      ) {
-        stopPolling();
-      }
-    }, 2000);
-  },
-  { deep: true },
-);
 
 async function loadConversations() {
   try {
@@ -185,8 +158,24 @@ async function loadConversations() {
 async function handleGenerate() {
   if (!selectedConversation.value) return;
   const result = await generate(selectedType.value, selectedConversation.value);
-  if (result) {
-    await loadReports();
+  if (!result) return;
+
+  cancelPoll?.();
+  const { promise, cancel } = pollTaskUntilDone(result.task_id);
+  cancelPoll = cancel;
+
+  try {
+    const info = await promise;
+    if (info.status === "succeeded") {
+      await loadReports();
+      await loadReport(result.report_id);
+    } else {
+      error.value = info.error || "报告生成失败";
+    }
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : "轮询报告状态失败";
+  } finally {
+    cancelPoll = null;
   }
 }
 
@@ -217,13 +206,6 @@ function typeLabel(type: string): string {
 function statusLabel(status: string): string {
   const m: Record<string, string> = { running: "生成中", completed: "已完成", failed: "失败" };
   return m[status] ?? status;
-}
-
-function stopPolling() {
-  if (pollHandle !== null) {
-    clearInterval(pollHandle);
-    pollHandle = null;
-  }
 }
 
 async function exportReport(format: "html" | "pdf") {

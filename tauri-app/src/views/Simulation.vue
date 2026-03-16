@@ -116,7 +116,7 @@
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useSimulation } from "../composables/useSimulation";
 import SimulationGraph from "../components/SimulationGraph.vue";
-import { fetchConversations } from "../services/api";
+import { fetchConversations, pollTaskUntilDone } from "../services/api";
 import type { Conversation } from "../types/import";
 
 const {
@@ -129,44 +129,24 @@ const conversations = ref<Conversation[]>([]);
 const selectedConversation = ref("");
 const forkDescription = ref("");
 const profileStatus = ref("");
-let profilePollHandle: ReturnType<typeof setInterval> | null = null;
-let sessionPollHandle: ReturnType<typeof setInterval> | null = null;
+let cancelProfilePoll: (() => void) | null = null;
+let cancelSessionPoll: (() => void) | null = null;
 
 onMounted(() => {
   void loadConversationOptions();
 });
 
 onUnmounted(() => {
-  stopProfilePolling();
-  stopSessionPolling();
+  cancelProfilePoll?.();
+  cancelSessionPoll?.();
 });
 
-watch(
-  () => currentSession.value?.session.status,
-  (status) => {
-    stopSessionPolling();
-    if (status !== "running" || !currentSession.value) {
-      return;
-    }
-    sessionPollHandle = setInterval(() => {
-      if (!currentSession.value || !selectedConversation.value) {
-        stopSessionPolling();
-        return;
-      }
-      void Promise.all([
-        loadSessions(selectedConversation.value),
-        loadSession(currentSession.value.session.id, selectedConversation.value),
-      ]);
-    }, 2000);
-  },
-);
-
 watch(selectedConversation, (conversationID, oldConversationID) => {
-  stopProfilePolling();
-  // Stop session polling only if the conversation actually changed
-  // (the running session belongs to the old conversation)
+  cancelProfilePoll?.();
+  cancelProfilePoll = null;
   if (oldConversationID && oldConversationID !== conversationID) {
-    stopSessionPolling();
+    cancelSessionPoll?.();
+    cancelSessionPoll = null;
   }
   profileStatus.value = "";
   void Promise.all([
@@ -177,7 +157,29 @@ watch(selectedConversation, (conversationID, oldConversationID) => {
 
 async function handleRun() {
   if (!selectedConversation.value || !forkDescription.value) return;
-  await startSimulation(selectedConversation.value, forkDescription.value, [], {});
+  const result = await startSimulation(selectedConversation.value, forkDescription.value, [], {});
+  if (!result) return;
+
+  cancelSessionPoll?.();
+  const convId = selectedConversation.value;
+  const { promise, cancel } = pollTaskUntilDone(result.task_id, () => {
+    void loadSession(result.session_id, convId);
+  });
+  cancelSessionPoll = cancel;
+
+  try {
+    const info = await promise;
+    if (info.status === "succeeded") {
+      await loadSessions(convId);
+      await loadSession(result.session_id, convId);
+    } else {
+      error.value = info.error || "模拟任务失败";
+    }
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : "轮询模拟状态失败";
+  } finally {
+    cancelSessionPoll = null;
+  }
 }
 
 async function handleBuildProfiles() {
@@ -186,7 +188,26 @@ async function handleBuildProfiles() {
   if (!result) return;
 
   profileStatus.value = "画像构建任务已提交，正在后台刷新...";
-  startProfilePolling();
+  cancelProfilePoll?.();
+  const convId = selectedConversation.value;
+  const { promise, cancel } = pollTaskUntilDone(result.task_id);
+  cancelProfilePoll = cancel;
+
+  try {
+    const info = await promise;
+    if (info.status === "succeeded") {
+      await loadProfiles(convId);
+      profileStatus.value = "人物画像已刷新完成。";
+    } else {
+      profileStatus.value = "画像构建失败，可稍后重试。";
+      error.value = info.error || "画像构建任务失败";
+    }
+  } catch (e: unknown) {
+    profileStatus.value = "画像仍在后台构建中，可稍后手动刷新。";
+    error.value = e instanceof Error ? e.message : "轮询画像构建状态失败";
+  } finally {
+    cancelProfilePoll = null;
+  }
 }
 
 function statusLabel(s: string): string {
@@ -196,32 +217,6 @@ function statusLabel(s: string): string {
 
 function parseJson(s: string): Record<string, unknown> {
   try { return JSON.parse(s) as Record<string, unknown>; } catch { return {}; }
-}
-
-function startProfilePolling() {
-  stopProfilePolling();
-  let attempts = 0;
-  profilePollHandle = setInterval(async () => {
-    attempts += 1;
-    if (!selectedConversation.value) {
-      stopProfilePolling();
-      return;
-    }
-    await loadProfiles(selectedConversation.value);
-    if (profiles.value.length > 0 || attempts >= 10) {
-      profileStatus.value = profiles.value.length > 0
-        ? "人物画像已刷新完成。"
-        : "画像仍在后台构建中，可稍后手动刷新。";
-      stopProfilePolling();
-    }
-  }, 2000);
-}
-
-function stopProfilePolling() {
-  if (profilePollHandle !== null) {
-    clearInterval(profilePollHandle);
-    profilePollHandle = null;
-  }
 }
 
 async function loadConversationOptions() {
@@ -243,13 +238,6 @@ async function handleRefreshSessions() {
 async function handleSelectSession(id: string) {
   if (!selectedConversation.value) return;
   await loadSession(id, selectedConversation.value);
-}
-
-function stopSessionPolling() {
-  if (sessionPollHandle !== null) {
-    clearInterval(sessionPollHandle);
-    sessionPollHandle = null;
-  }
 }
 </script>
 

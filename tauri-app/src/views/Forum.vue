@@ -93,9 +93,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import { useForum } from "../composables/useForum";
-import { fetchConversations } from "../services/api";
+import { fetchConversations, pollTaskUntilDone } from "../services/api";
 import type { Conversation } from "../types/import";
 import DebateTimeline from "../components/DebateTimeline.vue";
 
@@ -113,7 +113,7 @@ const {
 const conversations = ref<Conversation[]>([]);
 const selectedConversation = ref("");
 const debateElapsed = ref(0);
-let pollHandle: ReturnType<typeof setInterval> | null = null;
+let cancelPoll: (() => void) | null = null;
 let elapsedHandle: ReturnType<typeof setInterval> | null = null;
 
 onMounted(async () => {
@@ -121,28 +121,9 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  stopPolling();
+  cancelPoll?.();
   stopElapsedTimer();
 });
-
-watch(
-  () => currentSession.value?.session,
-  (session) => {
-    stopPolling();
-    stopElapsedTimer();
-    if (!session || session.status !== "running") {
-      return;
-    }
-    debateElapsed.value = 0;
-    elapsedHandle = setInterval(() => {
-      debateElapsed.value += 1;
-    }, 1000);
-    pollHandle = setInterval(() => {
-      void Promise.all([loadSession(session.id), loadSessions()]);
-    }, 2000);
-  },
-  { immediate: true },
-);
 
 async function loadConversations() {
   try {
@@ -154,18 +135,40 @@ async function loadConversations() {
 
 async function handleStartDebate() {
   if (!selectedConversation.value) return;
-  await startDebate(selectedConversation.value);
+  const result = await startDebate(selectedConversation.value);
+  if (!result) return;
+
+  cancelPoll?.();
+  stopElapsedTimer();
+
+  debateElapsed.value = 0;
+  elapsedHandle = setInterval(() => {
+    debateElapsed.value += 1;
+  }, 1000);
+
+  const { promise, cancel } = pollTaskUntilDone(result.task_id, () => {
+    void loadSession(result.session_id);
+  });
+  cancelPoll = cancel;
+
+  try {
+    const info = await promise;
+    if (info.status === "succeeded") {
+      await loadSessions();
+      await loadSession(result.session_id);
+    } else {
+      error.value = info.error || "辩论任务失败";
+    }
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : "轮询辩论状态失败";
+  } finally {
+    cancelPoll = null;
+    stopElapsedTimer();
+  }
 }
 
 async function handleSelectSession(id: string) {
   await loadSession(id);
-}
-
-function stopPolling() {
-  if (pollHandle !== null) {
-    clearInterval(pollHandle);
-    pollHandle = null;
-  }
 }
 
 function stopElapsedTimer() {

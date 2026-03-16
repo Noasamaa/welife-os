@@ -350,3 +350,79 @@ export async function fetchSimulation(id: string, conversationID: string): Promi
   if (!response.ok) throw new Error(`fetch simulation: ${response.status}`);
   return (await response.json()) as SimulationDetail;
 }
+
+// ── Task status polling ──
+
+export interface TaskInfo {
+  id: string;
+  name: string;
+  status: "queued" | "running" | "succeeded" | "failed";
+  error?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function fetchTaskStatus(taskId: string): Promise<TaskInfo> {
+  const response = await apiFetch(`/api/v1/tasks/${encodeURIComponent(taskId)}`);
+  if (!response.ok) throw new Error(`fetch task status: ${response.status}`);
+  return (await response.json()) as TaskInfo;
+}
+
+/**
+ * Poll a task until it reaches a terminal state (succeeded/failed).
+ * Returns the final TaskInfo.
+ *
+ * @param taskId - The task ID to poll
+ * @param onProgress - Optional callback for each poll (receives current TaskInfo)
+ * @param intervalMs - Polling interval in ms (default: 1500)
+ * @param timeoutMs - Max total wait time in ms (default: 300000 = 5min)
+ */
+export function pollTaskUntilDone(
+  taskId: string,
+  onProgress?: (info: TaskInfo) => void,
+  intervalMs = 1500,
+  timeoutMs = 300_000,
+): { promise: Promise<TaskInfo>; cancel: () => void } {
+  let timer: ReturnType<typeof setInterval> | null = null;
+  let cancelled = false;
+
+  const promise = new Promise<TaskInfo>((resolve, reject) => {
+    const start = Date.now();
+
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const info = await fetchTaskStatus(taskId);
+        onProgress?.(info);
+
+        if (info.status === "succeeded" || info.status === "failed") {
+          if (timer) clearInterval(timer);
+          resolve(info);
+          return;
+        }
+
+        if (Date.now() - start > timeoutMs) {
+          if (timer) clearInterval(timer);
+          resolve(info); // Return last known state on timeout
+        }
+      } catch (err) {
+        if (Date.now() - start > timeoutMs) {
+          if (timer) clearInterval(timer);
+          reject(err);
+        }
+        // Swallow transient errors, keep polling
+      }
+    };
+
+    // First poll immediately
+    poll();
+    timer = setInterval(poll, intervalMs);
+  });
+
+  const cancel = () => {
+    cancelled = true;
+    if (timer) clearInterval(timer);
+  };
+
+  return { promise, cancel };
+}

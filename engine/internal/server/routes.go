@@ -52,6 +52,9 @@ func (s *Server) routes() http.Handler {
 		api.Get("/system/llm-config", s.handleGetLLMConfig)
 		api.Patch("/system/llm-config", s.handleUpdateLLMConfig)
 
+		// Task status endpoint
+		api.Get("/tasks/{id}", s.handleGetTaskStatus)
+
 		// Import endpoints
 		api.Post("/import", s.handleImportUpload)
 		api.Get("/import/jobs", s.handleListImportJobs)

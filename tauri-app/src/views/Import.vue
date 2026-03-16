@@ -45,7 +45,7 @@ import ImportJobList from "../components/ImportJobList.vue";
 import GraphView from "../components/GraphView.vue";
 import { useImport } from "../composables/useImport";
 import { useGraph } from "../composables/useGraph";
-import { fetchConversations } from "../services/api";
+import { fetchConversations, pollTaskUntilDone } from "../services/api";
 import type { Conversation } from "../types/import";
 
 const { jobs, uploading, error: importError, upload, refreshJobs } = useImport();
@@ -53,7 +53,7 @@ const { overview, loading: graphLoading, error: graphError, loadOverview, buildG
 const conversations = ref<Conversation[]>([]);
 const graphStatus = ref("");
 const graphBuilding = ref(false);
-let graphPollHandle: ReturnType<typeof setInterval> | null = null;
+let cancelPoll: (() => void) | null = null;
 
 async function onFile(file: File) {
   await upload(file);
@@ -70,7 +70,31 @@ async function onBuildGraph() {
     return;
   }
   graphStatus.value = "图谱构建任务已提交，正在后台处理...";
-  startGraphPolling();
+
+  const taskId = (result as { task_id: string }).task_id;
+  const { promise, cancel } = pollTaskUntilDone(taskId, (info) => {
+    if (info.status === "running") {
+      graphStatus.value = "图谱构建中...";
+    }
+  });
+  cancelPoll = cancel;
+
+  try {
+    const finalInfo = await promise;
+    if (finalInfo.status === "succeeded") {
+      graphStatus.value = "图谱构建完成！";
+      await loadOverview();
+    } else if (finalInfo.status === "failed") {
+      graphStatus.value = `图谱构建失败: ${finalInfo.error || "未知错误"}`;
+    } else {
+      graphStatus.value = "图谱仍在后台构建中，可稍后手动刷新。";
+    }
+  } catch {
+    graphStatus.value = "图谱构建状态查询失败，可稍后手动刷新。";
+  } finally {
+    graphBuilding.value = false;
+    cancelPoll = null;
+  }
 }
 
 async function loadConversations() {
@@ -88,40 +112,8 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  stopGraphPolling();
+  cancelPoll?.();
 });
-
-function startGraphPolling() {
-  stopGraphPolling();
-  let attempts = 0;
-  graphPollHandle = setInterval(async () => {
-    attempts += 1;
-    const prevCount = overview.value?.stats?.entity_count ?? 0;
-    await loadOverview();
-    const newCount = overview.value?.stats?.entity_count ?? 0;
-
-    if (newCount > prevCount) {
-      graphStatus.value = `图谱构建中...已生成 ${newCount} 个实体`;
-    }
-
-    if (attempts >= 30) {
-      graphStatus.value = "图谱仍在后台构建中，可稍后手动刷新。";
-      graphBuilding.value = false;
-      stopGraphPolling();
-    } else if (newCount > 0 && newCount === prevCount && attempts >= 3) {
-      graphStatus.value = "图谱构建完成！";
-      graphBuilding.value = false;
-      stopGraphPolling();
-    }
-  }, 2000);
-}
-
-function stopGraphPolling() {
-  if (graphPollHandle !== null) {
-    clearInterval(graphPollHandle);
-    graphPollHandle = null;
-  }
-}
 </script>
 
 <style scoped>
